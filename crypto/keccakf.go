@@ -1,10 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"math/rand"
-)
-
 var (
 	// The Keccak permutation
 	keccakf func([]uint64)
@@ -195,17 +190,17 @@ func bytepad(X []byte, w uint64) []byte {
 
 }
 
-func main() {
-	b := generateRandomBytes()
-	fmt.Println(Keccak(b))
-}
+// func main() {
+// 	b := generateRandomBytes()
+// 	fmt.Println(Keccak(b))
+// }
 
-func generateRandomBytes() []byte {
-	b := make([]byte, 1000)
-	_, err := rand.Read(b)
-	if err != nil {
-		fmt.Println("error:", err)
-		return nil
-	}
-	return b
-}
+// func generateRandomBytes() []byte {
+// 	b := make([]byte, 1000)
+// 	_, err := rand.Read(b)
+// 	if err != nil {
+// 		fmt.Println("error:", err)
+// 		return nil
+// 	}
+// 	return b
+// }
