@@ -6,7 +6,7 @@ var (
 	// The output of the permutation
 	state []uint64
 	// The rate of the sponge
-	rate = 1088
+	rate int
 	// The output length
 	outputLength = 32
 	// number of rounds
@@ -15,9 +15,9 @@ var (
 
 // Keccak hashing function
 // Accepts a message in bytes and returns its Keccak hash
-func Keccak(message []byte) []byte {
+func Keccak(message []byte, inRate int) []byte {
 	// Initialize vars
-
+	rate = inRate
 	// Initialize the state
 	state = make([]uint64, 25)
 
@@ -192,7 +192,7 @@ func bytepad(X []byte, w uint64) []byte {
 
 // func main() {
 // 	b := generateRandomBytes()
-// 	fmt.Println(Keccak(b))
+// 	fmt.Println(Keccak(b), 1088)
 // }
 
 // func generateRandomBytes() []byte {
