@@ -73,7 +73,9 @@ func GenPoint() *E521 {
 
 }
 
-func IdentityPoint() *E521 { return NewE521(*big.NewInt(0), *big.NewInt(1)) }
+// The identity point of the curve (also refered to as "point at infinity").
+// Equivalent to 0 in integer group.
+func IDPoint() *E521 { return NewE521(*big.NewInt(0), *big.NewInt(1)) }
 
 /*
 Gets the opposite value of a point, defined as the following:
@@ -81,6 +83,7 @@ if P = (X, Y), opposite of P = (-X, Y).
 */
 func (e *E521) getOpposite() *E521 { return NewE521(*e.x.Neg(&e.x), e.y) }
 
+// Checks two points for equality by comparing their coordinates.
 func (A *E521) Equals(B *E521) bool { return A.x.Cmp(&B.x) == 0 && A.y.Cmp(&B.y) == 0 }
 
 /*
@@ -132,7 +135,7 @@ power consumption side channel attacks. Mostly constructed around:
 S is a  scalar value to multiply by. S is a private key and should be kept secret.
 Returns Curve.E521 point which is result of multiplication.
 */
-func (r1 *E521) MultiplyMontgomery(S *big.Int) *E521 {
+func (r1 *E521) SecMul(S *big.Int) *E521 {
 	r0 := NewE521(*big.NewInt(0), *big.NewInt(1))
 	for i := S.BitLen(); i >= 0; i-- {
 		if S.Bit(i) == 1 {
@@ -174,6 +177,7 @@ func sqrt(v *big.Int, lsb uint) *big.Int {
 	return r
 }
 
+// gengerates random 512 bit integer
 func generateRandomBigInt() *big.Int {
 	b := make([]byte, 64)
 	_, err := rand.Read(b)

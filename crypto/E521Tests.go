@@ -26,8 +26,8 @@ func Zero() {
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := IdentityPoint()
-		if G.MultiplyMontgomery(big.NewInt(0)).Equals(IdentityPoint()) {
+		G := IDPoint()
+		if G.SecMul(big.NewInt(0)).Equals(IDPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -42,7 +42,7 @@ func One() {
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
 		G := GenPoint()
-		if G.MultiplyMontgomery(big.NewInt(1)).Equals(GenPoint()) {
+		if G.SecMul(big.NewInt(1)).Equals(GenPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -57,7 +57,7 @@ func GPlusMinusG() {
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
 		G := GenPoint()
-		if G.Add(GenPoint().getOpposite()).Equals(IdentityPoint()) {
+		if G.Add(GenPoint().getOpposite()).Equals(IDPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -72,7 +72,7 @@ func TwoTimesG() {
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
 		G := GenPoint()
-		if G.MultiplyMontgomery(big.NewInt(2)).Equals(G.Add(G)) {
+		if G.SecMul(big.NewInt(2)).Equals(G.Add(G)) {
 			passedTestCount++
 		} else {
 			break
@@ -87,7 +87,7 @@ func FourTimesG() {
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
 		G := GenPoint()
-		if G.MultiplyMontgomery(big.NewInt(4)).Equals(G.MultiplyMontgomery(big.NewInt(2)).MultiplyMontgomery(big.NewInt(2))) {
+		if G.SecMul(big.NewInt(4)).Equals(G.SecMul(big.NewInt(2)).SecMul(big.NewInt(2))) {
 			passedTestCount++
 		} else {
 			break
@@ -102,7 +102,7 @@ func NotZero() {
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
 		G := GenPoint()
-		if !G.MultiplyMontgomery(big.NewInt(4)).Equals(IdentityPoint()) {
+		if !G.SecMul(big.NewInt(4)).Equals(IDPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -118,7 +118,7 @@ func rTimesG() {
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
 		G := GenPoint()
-		if G.MultiplyMontgomery(&G.r).Equals(IdentityPoint()) {
+		if G.SecMul(&G.r).Equals(IDPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -135,8 +135,8 @@ func TestkTimesGAndkmodRTimesG() {
 	numberOfTests := 50
 	for i := 0; i < numberOfTests; i++ {
 		k := generateRandomBigInt()
-		G1 := G.MultiplyMontgomery(k)
-		G2 := G.MultiplyMontgomery(k.Mod(k, &R))
+		G1 := G.SecMul(k)
+		G2 := G.SecMul(k.Mod(k, &R))
 		if G1.Equals(G2) {
 			passedTestCount++
 		} else {
@@ -152,10 +152,10 @@ func TestkPlus1TimesG() {
 	numberOfTests := 50
 	for i := 0; i < numberOfTests; i++ {
 		k := generateRandomBigInt()
-		G2 := GenPoint().MultiplyMontgomery(k)
+		G2 := GenPoint().SecMul(k)
 		G2 = G2.Add(GenPoint())
 		k = k.Add(k, big.NewInt(1))
-		G1 := GenPoint().MultiplyMontgomery(k)
+		G1 := GenPoint().SecMul(k)
 		if G1.Equals(G2) {
 			passedTestCount++
 		} else {
@@ -173,11 +173,11 @@ func ktTimesgEqualskgtg() {
 		k := generateRandomBigInt()
 		t := generateRandomBigInt()
 
-		G2 := GenPoint().MultiplyMontgomery(k)
-		G2 = G2.Add(GenPoint().MultiplyMontgomery(t))
+		G2 := GenPoint().SecMul(k)
+		G2 = G2.Add(GenPoint().SecMul(t))
 
 		x := new(big.Int).Add(k, t)
-		G1 := GenPoint().MultiplyMontgomery(x)
+		G1 := GenPoint().SecMul(x)
 
 		if G1.Equals(G2) {
 			passedTestCount++
@@ -196,12 +196,12 @@ func ktpEqualstkGEqualsktmodrG() {
 		k := generateRandomBigInt()
 		t := generateRandomBigInt()
 
-		ktP := GenPoint().MultiplyMontgomery(t).MultiplyMontgomery(k)
-		tkG := GenPoint().MultiplyMontgomery(k).MultiplyMontgomery(t)
+		ktP := GenPoint().SecMul(t).SecMul(k)
+		tkG := GenPoint().SecMul(k).SecMul(t)
 
 		ktmodr := k.Mul(k, t)
 		ktmodr = ktmodr.Mod(ktmodr, &GenPoint().r)
-		ktmodrG := GenPoint().MultiplyMontgomery(ktmodr)
+		ktmodrG := GenPoint().SecMul(ktmodr)
 
 		if ktP.Equals(tkG) && ktP.Equals(ktmodrG) {
 			passedTestCount++
@@ -210,5 +210,4 @@ func ktpEqualstkGEqualsktmodrG() {
 		}
 	}
 	fmt.Println("Test passed: ", passedTestCount == numberOfTests)
-
 }
