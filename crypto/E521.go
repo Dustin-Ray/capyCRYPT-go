@@ -189,19 +189,3 @@ func generateRandomBigInt() *big.Int {
 	random.SetBytes(b)
 	return random
 }
-
-// func main() {
-// 	A := GeneratorPoint()
-// 	B := GeneratorPoint().getOpposite()
-
-// 	C := A.Add(B)
-
-// 	// random := generateRandomBigInt()
-
-// 	// pointA = pointA.MultiplyMontgomery(big.NewInt(4))
-
-// 	fmt.Println(A.s)
-// 	fmt.Println(B.s)
-// 	fmt.Println(C.s)
-
-// }
