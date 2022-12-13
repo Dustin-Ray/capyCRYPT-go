@@ -5,21 +5,21 @@ import (
 	"math/big"
 )
 
-func main() {
+// func main() {
 
-	Zero()
-	One()
-	GPlusMinusG()
-	TwoTimesG()
-	FourTimesG()
-	NotZero()
-	rTimesG()
-	TestkTimesGAndkmodRTimesG()
-	TestkPlus1TimesG()
-	ktTimesgEqualskgtg()
-	ktpEqualstkGEqualsktmodrG()
+// 	Zero()
+// 	One()
+// 	GPlusMinusG()
+// 	TwoTimesG()
+// 	FourTimesG()
+// 	NotZero()
+// 	rTimesG()
+// 	TestkTimesGAndkmodRTimesG()
+// 	TestkPlus1TimesG()
+// 	ktTimesgEqualskgtg()
+// 	ktpEqualstkGEqualsktmodrG()
 
-}
+// }
 
 func Zero() {
 
