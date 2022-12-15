@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func main() {
+func RunServer() {
 
 	CreateServerCertAndKey("127.0.0.1", "server.crt", "server.key")
 

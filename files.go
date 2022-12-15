@@ -10,14 +10,15 @@ import (
 func readFileChunk(file *os.File, chunkSize int64, pos int64, wg *sync.WaitGroup, chunks *chan []byte) {
 	b := make([]byte, chunkSize)
 	file.ReadAt(b, pos*chunkSize)
-	// KeccakP1600(b, 1344)
+	c := BytesToUint64(b)
+	KeccakP1600(&c)
 	wg.Done()
 	*chunks <- b
 }
 
 // func KeccakChunk(chunks *chan []byte)
 
-func run() {
+func RunFileProcess() {
 
 	start := time.Now() // start time
 	fileName := "/home/dr/Downloads/bible.txt"
