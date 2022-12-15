@@ -5,7 +5,7 @@
 //go:build !amd64 || purego || !gc
 // +build !amd64 purego !gc
 
-package CryptoTool
+package main
 
 import "math/bits"
 

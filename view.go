@@ -1,11 +1,11 @@
-package CryptoTool
+package main
 
 import (
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 )
 
-func main() {
+func RunView() {
 	// Initialize GTK without parsing any command line arguments.
 	gtk.Init(nil)
 

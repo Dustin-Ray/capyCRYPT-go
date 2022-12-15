@@ -1,4 +1,4 @@
-package CryptoTool
+package main
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 func readFileChunk(file *os.File, chunkSize int64, pos int64, wg *sync.WaitGroup, chunks *chan []byte) {
 	b := make([]byte, chunkSize)
 	file.ReadAt(b, pos*chunkSize)
-	KeccakP1600(b, 1344)
+	// KeccakP1600(b, 1344)
 	wg.Done()
 	*chunks <- b
 }

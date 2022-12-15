@@ -1,4 +1,4 @@
-package CryptoTool
+package main
 
 import (
 	"bufio"
@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func main() {
+func runClient() {
 	// Create a tls.Config object with the desired tls properties
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,

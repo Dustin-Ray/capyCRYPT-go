@@ -1,4 +1,4 @@
-package CryptoTool
+package main
 
 func padTenOne(X []byte, rate int) []byte {
 
