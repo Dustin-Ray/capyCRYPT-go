@@ -1,4 +1,4 @@
-package main
+package CryptoTool
 
 import (
 	"github.com/gotk3/gotk3/gdk"
