@@ -1,26 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"sync"
-	"time"
 )
 
 func readFileChunk(file *os.File, chunkSize int64, pos int64, wg *sync.WaitGroup, chunks *chan []byte) {
 	b := make([]byte, chunkSize)
 	file.ReadAt(b, pos*chunkSize)
-	c := BytesToUint64(b)
-	KeccakP1600(&c)
+	// Keccak(b, 1344)
 	wg.Done()
 	*chunks <- b
 }
 
 // func KeccakChunk(chunks *chan []byte)
 
-func RunFileProcess() {
+func run() {
 
-	start := time.Now() // start time
+	// start := time.Now() // start time
 	fileName := "/home/dr/Downloads/bible.txt"
 	// fileName := "/home/dr/Downloads/input.file"
 
@@ -32,6 +29,7 @@ func RunFileProcess() {
 	}
 
 	fileSize := fileInfo.Size()
+	// fmt.Println(fileSize / 64)
 	threads := int64(fileSize / 64)
 	chunkSize := int64(fileSize / threads)
 
@@ -49,7 +47,7 @@ func RunFileProcess() {
 	}
 
 	wg.Wait()
-	end := time.Since(start)
-	fmt.Println("Done reading file.")
-	fmt.Println("Time elapsed: ", end)
+	// end := time.Since(start)
+	// fmt.Println("Done reading file.")
+	// fmt.Println("Time elapsed: ", end)
 }

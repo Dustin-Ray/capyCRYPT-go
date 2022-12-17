@@ -1,4 +1,4 @@
-module main
+module cryptotool
 
 go 1.19
 

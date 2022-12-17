@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func runClient() {
+func RunClient() {
 	// Create a tls.Config object with the desired tls properties
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,

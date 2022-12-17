@@ -1,4 +1,11 @@
-package main
+// Copyright 2014 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+//go:build !amd64 || purego || !gc
+// +build !amd64 purego !gc
+
+pakcage main
 
 import "math/bits"
 
@@ -32,12 +39,12 @@ var rc = [24]uint64{
 
 // keccakF1600 applies the Keccak permutation to a 1600b-wide
 // state represented as a slice of 25 uint64s.
-func KeccakP1600(a *[25]uint64) {
+func keccakF1600(a *[25]uint64) {
 	// Implementation translated from Keccak-inplace.c
 	// in the keccak reference code.
 	var t, bc0, bc1, bc2, bc3, bc4, d0, d1, d2, d3, d4 uint64
 
-	for i := 0; i < 12; i += 4 {
+	for i := 0; i < 24; i += 4 {
 		// Combines the 5 steps in each round into 2 steps.
 		// Unrolls 4 rounds per loop and spreads some steps across rounds.
 
