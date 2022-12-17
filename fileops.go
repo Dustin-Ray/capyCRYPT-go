@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"sync"
 )
@@ -50,4 +53,37 @@ func run() {
 	// end := time.Since(start)
 	// fmt.Println("Done reading file.")
 	// fmt.Println("Time elapsed: ", end)
+}
+
+func fileToByteArray(filename string) []byte {
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanBytes)
+
+	var bytes []byte
+	for scanner.Scan() {
+		bytes = append(bytes, scanner.Bytes()...)
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return bytes
+}
+
+func main() {
+
+	b, err := ioutil.ReadFile("bible.txt")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(BytesToHexString(SHA3(&b, 512)))
 }

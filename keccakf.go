@@ -2,10 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build !amd64 || purego || !gc
-// +build !amd64 purego !gc
-
-pakcage main
+package main
 
 import "math/bits"
 
@@ -39,7 +36,7 @@ var rc = [24]uint64{
 
 // keccakF1600 applies the Keccak permutation to a 1600b-wide
 // state represented as a slice of 25 uint64s.
-func keccakF1600(a *[25]uint64) {
+func KeccakF1600(a *[25]uint64) {
 	// Implementation translated from Keccak-inplace.c
 	// in the keccak reference code.
 	var t, bc0, bc1, bc2, bc3, bc4, d0, d1, d2, d3, d4 uint64

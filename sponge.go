@@ -2,47 +2,62 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 )
 
-func SpongeAbsorb(m *[]byte, capacity int) *[25]uint64 {
+func SHA3(N *[]byte, d int) []byte {
+	bytesToPad := 136 - len(*N)%136 // SHA3-256 r = 1088 / 8 = 136
+	if bytesToPad == 1 {
+		*N = append(*N, 0x86)
+	} else {
+		*N = append(*N, 0x06)
+	}
+	return SpongeSqueeze(SpongeAbsorb(N, 2*d), d, 1600-(2*d))
+}
+
+func SpongeAbsorb(m *[]byte, capacity int) [25]uint64 {
 
 	rateInBytes := (1600 - capacity) / 8
-	var P *[]byte
+	var P []byte
 	if len(*m)%rateInBytes == 0 {
-		*P = *m
+		P = *m
 	} else {
-		*P = padTenOne(*m, rateInBytes)
+		P = padTenOne(*m, rateInBytes)
 	}
-	// fmt.Println(BytesToHexString(P))
-
-	stateArray := BytesToStates(*P, rateInBytes)
-	var S *[25]uint64
-	// fmt.Println("stateArray:\n", stateArray)
+	stateArray := BytesToStates(P, rateInBytes)
+	var S [25]uint64
 	for _, st := range stateArray {
-		keccakf(Xorstates(S, &st))
+		S = Xorstates(S, st)
+		KeccakF1600(&S)
 	}
-	// fmt.Println(S)
 	return S
 }
 
-func SpongeSqueeze(S *[25]uint64, rate, bitlength int) []byte {
-	output := make([]byte, bitlength/8)
+func SpongeSqueeze(S [25]uint64, rate, bitLength int) []byte {
 
-	for i := 0; i < len(output); i += 8 {
-		block := S[i/8 : i/8+8]
-		for j := 0; j < len(block); j++ {
-			output[i+j] = byte(block[j] >> (uint(j) * 8))
-		}
-		if i+8 >= bitlength {
-			break
-		}
-		keccakf(S)
+	var out []uint64 //FIPS 202 Algorithm 8 Step 8
+	offset := 0
+	blockSize := rate / 64
+
+	for len(out)*64 < bitLength {
+		out = append(out, S[0:blockSize]...)
+		offset += blockSize
+		KeccakF1600(&S) //FIPS 202 Algorithm 8 Step 10
 	}
-	// fmt.Println(output)
-	return output
+	return StateToByteArray(out, bitLength/8)[:512/8] //FIPS 202 3.1
+}
 
+func StateToByteArray(uint64s []uint64, bitLength int) []byte {
+	var result []byte
+	for _, v := range uint64s {
+		// Use binary.PutUvarint to convert uint64 to byte array
+		b := make([]byte, 8)
+		binary.LittleEndian.PutUint64(b, v)
+		result = append(result, b...)
+	}
+	return result
 }
 
 func BytesToStates(in []byte, rateInBytes int) [][25]uint64 {
@@ -60,45 +75,27 @@ func BytesToStates(in []byte, rateInBytes int) [][25]uint64 {
 	return stateArray
 }
 
-func SHA3(N []byte, d int) []byte {
-	message := make([]byte, len(N)+1)
-	copy(message, N)
-	bytesToPad := 136 - len(N)%136 // SHA3-256 r = 1088 / 8 = 136
-	if bytesToPad == 1 {
-		message[len(N)] = 0x86
-	} else {
-		message[len(N)] = 0x06
-	}
-	return SpongeSqueeze(SpongeAbsorb(&message, 2*d), d, 1600-(2*d))
-}
-
 func BytesToLane(in []byte, offset uint64) uint64 {
 	lane := uint64(0)
 	for i := uint64(0); i < uint64(8); i++ {
 		lane += uint64(in[i+offset]&0xFF) << (8 * i) //mask shifted byte to long and add to lane
-		// fmt.Println(lane)
 	}
 	return lane
 }
 
-func Xorstates(a, b *[25]uint64) *[25]uint64 {
+func Xorstates(a, b [25]uint64) [25]uint64 {
 	var result [25]uint64
 	for i := range result {
 		result[i] ^= a[i] ^ b[i]
 	}
-	return &result
-}
-
-func keccakf(state *[25]uint64) {
-
+	return result
 }
 
 func padTenOne(X []byte, rateInBytes int) []byte {
 	q := rateInBytes - len(X)%rateInBytes
 	padded := make([]byte, len(X)+q)
 	copy(padded, X)
-	b := byte(0x80)
-	padded[len(X)+q-1] = b
+	padded[len(X)+q-1] = byte(0x80)
 	return padded
 }
 
@@ -150,35 +147,12 @@ func bytepad(X []byte, w uint64) []byte {
 
 }
 
-func main() {
-
-	msg := []byte{}
-	// Keccak(msg, 1344)
-	secParam := 512
-	// fmt.Println(BytesToHexString(SpongeSqueeze(SpongeAbsorb(msg, 512), 1600-secParam, 256)))
-	fmt.Println(SHA3(msg, secParam))
-
-	var x uint64 = 8796093022209
-	var y int64 = 8796093022215
-
-	fmt.Printf("uint64: %v = %#[1]x, int64: %v = %#x\n", x, y, uint64(y))
-
-}
-
 func ArrayToHexString(input [25]uint64) string {
 	var output string
 	for _, v := range input {
 		output += fmt.Sprintf("%x", v)
 	}
 	return output
-}
-
-func Uint64ToBytes(uint64s [25]uint64) []byte {
-	var bytes []byte
-	for i := range uint64s {
-		bytes = append(bytes, byte(uint64s[i]))
-	}
-	return bytes
 }
 
 func generateRandomBytes() []byte {
@@ -188,7 +162,6 @@ func generateRandomBytes() []byte {
 		fmt.Println("error:", err)
 		return nil
 	}
-	// fmt.Println("random bytes: ", BytesToHexString(b))
 	return b
 }
 
