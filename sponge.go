@@ -37,7 +37,7 @@ func SpongeSqueeze(S *[25]uint64, rate, bitLength int) []byte {
 		offset += blockSize
 		KeccakF1600(S) //FIPS 202 Algorithm 8 Step 10
 	}
-	return StateToByteArray(&out, bitLength/8)[:512/8] //FIPS 202 3.1
+	return StateToByteArray(&out, bitLength/8)[:bitLength/8] //FIPS 202 3.1
 }
 
 func BytesToStates(in []byte, rateInBytes int) [][25]uint64 {

@@ -12,7 +12,7 @@ const consumerCount int = 4
 
 func produce(file *os.File, pos int64, link chan []byte, wg *sync.WaitGroup) {
 	// Open the file
-	f, err := os.Open("/home/dr/Downloads/movie/movie.mp4")
+	f, err := os.Open("bible.txt")
 	if err != nil {
 		panic(err)
 	}
@@ -33,13 +33,13 @@ func consume(link <-chan []byte, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for ch := range link {
 		ch = <-link
-		SpongeSqueeze(SpongeAbsorb(&ch, 512), 1344/8, 512)
+		SpongeSqueeze(SpongeAbsorb(&ch, 256), 1344/8, 256)
 	}
 }
 
 func main() {
 
-	file, _ := os.Open("/home/dr/Downloads/movie/movie.mp4")
+	file, _ := os.Open("bible.txt")
 	fileInfo, _ := file.Stat()
 	fileSize := fileInfo.Size()
 	chunkSize := 8192
