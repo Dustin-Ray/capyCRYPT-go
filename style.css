@@ -6,11 +6,6 @@
 #resetButton:active { 
     background-image: none; 
     border-image: none;
+    color: red;
     background-color: red;          
-}
-
-#box {
-    background-image: none; 
-    border-image: none;
-    background-color: red;
 }

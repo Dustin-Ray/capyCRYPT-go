@@ -7,29 +7,34 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
-// A Window context object
+/*
+A window context is an object that contains a Window and a Fixed.
+Fixed holds all widgets so that they can be placed at precise pixels.
+The style of the window is set by style.css.
+*/
 type WindowCtx struct {
 	win          *gtk.Window
 	fixed        *gtk.Fixed
-	loadedFile   *os.File
-	notePad      *gtk.TextBuffer
-	initialState bool
-	status       string
+	loadedFile   *os.File        // Represents any file currently pointed to
+	notePad      *gtk.TextBuffer // The text area where input and output is processed
+	initialState bool            // Signals if window has is waiting for user input
+	status       string          // Outputs operation status and error messages
 }
 
+// Entry point
 func main() {
 	gtk.Init(nil)
 
 	settings, _ := gtk.SettingsGetDefault()
 	settings.SetProperty("gtk-application-prefer-dark-theme", true)
-	window := Initialize()
+	window := initialize()
 
 	window.win.ShowAll()
 	gtk.Main()
 }
 
-// Overrides layouts to provide direct placement of widgets.
-func NewFixed() *gtk.Fixed {
+// Overrides layouts to provide direct placement of widgets
+func newFixed() *gtk.Fixed {
 	fixed, err := gtk.FixedNew()
 	fixed.SetSizeRequest(1000, 590)
 	if err != nil {
@@ -40,7 +45,7 @@ func NewFixed() *gtk.Fixed {
 
 // Create a new toplevel window, set its title, and connect it to the
 // "destroy" signal to exit the GTK main loop when it is destroyed.
-func SetupWindow() *gtk.Window {
+func setupWindow() *gtk.Window {
 
 	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	if err != nil {
@@ -55,7 +60,7 @@ func SetupWindow() *gtk.Window {
 }
 
 /*
-Creates a scrollable text area to display output of operations. Contains
+Creates a scrollable text area to display input and output of operations. Contains
 drag and drop functionality for file operations.
 */
 func createScrollableTextArea(ctx *WindowCtx) *gtk.TextBuffer {
@@ -89,32 +94,25 @@ func createScrollableTextArea(ctx *WindowCtx) *gtk.TextBuffer {
 	return buf
 }
 
-// Resets the window to the initial state.
-func Initialize() *WindowCtx {
+func createTable() {}
+
+// Sets the window to the initial state.
+func initialize() *WindowCtx {
 
 	ctx := WindowCtx{}
-	ctx.win = SetupWindow()
-	ctx.fixed = NewFixed()
+	ctx.win = setupWindow()
+	ctx.fixed = newFixed()
 
 	ctx.initialState = true
 	ctx.win.Add(ctx.fixed)
 
 	ctx.loadedFile = nil
 	ctx.notePad = createScrollableTextArea(&ctx)
-	ctx.status = "Ready"
+	ctx.status = "Status: Ready"
 
-	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 0)
-	if err != nil {
-		panic(err)
-	}
-	box.SetBorderWidth(10)
-	box.SetName("box")
-	box.SetSizeRequest(110, 65)
-	ctx.fixed.Put(box, 40, 490)
-
-	SetupButtons(&ctx)
-	SetupLabels(ctx.fixed)
-	SetupMenuBar(ctx.fixed)
+	setupButtons(&ctx)
+	setupLabels(&ctx)
+	setupMenuBar(ctx.fixed)
 
 	cssProvider, _ := gtk.CssProviderNew()
 	cssProvider.LoadFromPath("style.css")
@@ -129,12 +127,12 @@ func (ctx *WindowCtx) Reset() {
 	ctx.initialState = true
 	ctx.loadedFile = nil
 	ctx.notePad = createScrollableTextArea(ctx)
-	ctx.status = "Ready"
+	ctx.status = "Status: Ready"
 	ctx.win.ShowAll()
 }
 
 // Adds file menu bar to window.
-func SetupMenuBar(ctx *gtk.Fixed) {
+func setupMenuBar(ctx *gtk.Fixed) {
 
 	menubar, _ := gtk.MenuBarNew()
 	fileMi, _ := gtk.MenuItemNewWithLabel("File")
@@ -146,19 +144,25 @@ func SetupMenuBar(ctx *gtk.Fixed) {
 
 }
 
-func SetupLabels(ctx *gtk.Fixed) {
+// Adds labels to window
+func setupLabels(ctx *WindowCtx) {
 	// Create a label and add it to the fixed container
 	buttonsLabel, _ := gtk.LabelNew("Text Operations:")
 	notePadLabel, _ := gtk.LabelNew("Notepad:")
+	statusLabel, _ := gtk.LabelNew("Status: Ready")
+
 	buttonsLabel.SetName("textOpsLabel") //for CSS styling
 	notePadLabel.SetName("notepadLabel") //for CSS styling
+	buttonsLabel.SetName("statusLabel")  //for CSS styling
 
-	ctx.Put(buttonsLabel, 40, 40)
-	ctx.Put(notePadLabel, 290, 40)
+	ctx.fixed.Put(buttonsLabel, 40, 40)
+	ctx.fixed.Put(notePadLabel, 290, 40)
+	ctx.fixed.Put(statusLabel, 290, 545)
+
 }
 
 // adds buttons in a factory style to fixed context
-func SetupButtons(ctx *WindowCtx) {
+func setupButtons(ctx *WindowCtx) {
 	labelList := []string{"Compute Hash", "Compute Tag", "Encrypt With Password", "Decrypt With Password",
 		"Generate Keypair", "Encrypt With Key", "Decrypt With Key", "Sign With Key", "Verify Signature"}
 
@@ -171,5 +175,5 @@ func SetupButtons(ctx *WindowCtx) {
 	reset.Connect("button-press-event", func() {
 		ctx.Reset()
 	})
-	ctx.fixed.Put(reset, 60, 505)
+	ctx.fixed.Put(reset, 40, 510)
 }
