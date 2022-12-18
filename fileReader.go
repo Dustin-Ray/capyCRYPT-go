@@ -7,12 +7,9 @@ import (
 	"time"
 )
 
-const producerCount int = 4
-const consumerCount int = 4
-
-func produce(file *os.File, pos int64, link chan []byte, wg *sync.WaitGroup) {
-	// Open the file
-	f, err := os.Open("bible.txt")
+// reads pos * i number of bytes from a file and pushes the resulting array into link channel.
+func produce(filePath string, pos int64, link chan []byte, wg *sync.WaitGroup) {
+	f, err := os.Open(filePath)
 	if err != nil {
 		panic(err)
 	}
@@ -29,17 +26,17 @@ func produce(file *os.File, pos int64, link chan []byte, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
+// consumes any available byte array in link channel.
 func consume(link <-chan []byte, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for ch := range link {
-		ch = <-link
 		SpongeSqueeze(SpongeAbsorb(&ch, 256), 1344/8, 256)
 	}
 }
 
-func main() {
+func run() {
 
-	file, _ := os.Open("bible.txt")
+	file, _ := os.Open("/home/dr/Downloads/movie/movie.mp4")
 	fileInfo, _ := file.Stat()
 	fileSize := fileInfo.Size()
 	chunkSize := 8192
@@ -49,9 +46,9 @@ func main() {
 	wp := &sync.WaitGroup{}
 	wc := &sync.WaitGroup{}
 	start := time.Now()
-	for i := 0; int64(i) < chunks; i++ {
+	for i := 1; int64(i) < chunks-1; i++ {
 		wp.Add(1)
-		go produce(file, int64(i*8192), link, wp)
+		go produce("/home/dr/Downloads/movie/movie.mp4", int64(i*8192), link, wp)
 	}
 
 	for i := 0; int64(i) < chunks; i++ {
