@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
+	"regexp"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
@@ -14,10 +14,6 @@ type KeyTable struct {
 	treeview           *gtk.TreeView       // Displays list of keys currently imported
 	scrollableTreelist *gtk.ScrolledWindow // Allows scrolling for long list of keys
 	grid               *gtk.Grid           // Grid container for TreeView
-	ID_COLUMN          int
-	NAME_COLUMN        string
-	TYPE_COLUMN        string
-	NUM_COLUMNS        int
 }
 
 /*
@@ -166,16 +162,14 @@ func setupKeyTable(ctx *WindowCtx) {
 		grid:               newGrid,
 		treeview:           newTreeView,
 		scrollableTreelist: newScrollableTreeList,
-		ID_COLUMN:          0,
 	}
 
 	ctx.fixed.Put(ctx.keytable.grid, 700, 80)
 	newTreeView.SetModel(createAndFillModel())
 	newTreeView.SetGridLines(gtk.TREE_VIEW_GRID_LINES_BOTH)
-	newTreeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) {
+	newTreeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) string {
 		// Get the list store
 		liststore, _ := tv.GetModel()
-
 		sel, _ := tv.GetSelection()
 		_, iter, _ := sel.GetSelected()
 
@@ -191,6 +185,7 @@ func setupKeyTable(ctx *WindowCtx) {
 
 		ctx.status = "Key data: " + idVal.(string) + nameVal + keyVal
 		fmt.Println("Key data: ", idVal, nameVal, keyVal)
+		return ""
 	})
 }
 
@@ -236,7 +231,7 @@ func setupMenuBar(ctx *gtk.Fixed) {
 
 	menubar, _ := gtk.MenuBarNew()
 	fileMi, _ := gtk.MenuItemNewWithLabel("File")
-	edit, _ := gtk.MenuItemNewWithLabel("Edit")
+	edit, _ := gtk.MenuItemNewWithLabel("Keys")
 
 	menubar.Append(fileMi)
 	menubar.Append(edit)
@@ -266,28 +261,25 @@ func setupButtons(ctx *WindowCtx) {
 	labelList := []string{"Compute Hash", "Compute Tag", "Encrypt With Password", "Decrypt With Password",
 		"Generate Keypair", "Encrypt With Key", "Decrypt With Key", "Sign With Key", "Verify Signature"}
 
+	buttonList := make([]gtk.Button, len(labelList))
+
 	for i, label := range labelList {
 		btn, _ := gtk.ButtonNewWithLabel(label)
+		buttonList[i] = *btn
 		ctx.fixed.Put(btn, 40, 80+i*45)
 	}
+
+	buttonList[0].Connect("clicked", func() {
+		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+		regex := regexp.MustCompile(`(?m)^\s*\r?\n`)
+		text = regex.ReplaceAllString(text, "")
+		ctx.notePad.SetText(ComputeSHA3HASH(text))
+	}) //etc....
+
 	reset, _ := gtk.ButtonNewWithLabel("Reset")
 	reset.SetName("resetButton") //for CSS styling
 	reset.Connect("button-press-event", func() {
 		ctx.Reset()
 	})
 	ctx.fixed.Put(reset, 40, 510)
-}
-
-func ScanDir() []string {
-	files, err := ioutil.ReadDir("\\keys")
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
-
-	var fileNames []string
-	for _, file := range files {
-		fileNames = append(fileNames, file.Name())
-	}
-	return fileNames
 }

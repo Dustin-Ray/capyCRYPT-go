@@ -1,15 +1,5 @@
 package main
 
-func SHA3(N *[]byte, d int) []byte {
-	bytesToPad := 136 - len(*N)%136 // SHA3-256 r = 1088 / 8 = 136
-	if bytesToPad == 1 {
-		*N = append(*N, 0x86)
-	} else {
-		*N = append(*N, 0x06)
-	}
-	return SpongeSqueeze(SpongeAbsorb(N, 2*d), d, 1600-(2*d))
-}
-
 func SpongeAbsorb(m *[]byte, capacity int) *[25]uint64 {
 
 	rateInBytes := (1600 - capacity) / 8
