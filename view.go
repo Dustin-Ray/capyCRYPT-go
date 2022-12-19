@@ -1,11 +1,24 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
+
+type KeyTable struct {
+	treeview           *gtk.TreeView       // Displays list of keys currently imported
+	scrollableTreelist *gtk.ScrolledWindow // Allows scrolling for long list of keys
+	grid               *gtk.Grid           // Grid container for TreeView
+	ID_COLUMN          int
+	NAME_COLUMN        string
+	TYPE_COLUMN        string
+	NUM_COLUMNS        int
+}
 
 /*
 A window context is an object that contains a Window and a Fixed.
@@ -19,6 +32,7 @@ type WindowCtx struct {
 	notePad      *gtk.TextBuffer // The text area where input and output is processed
 	initialState bool            // Signals if window has is waiting for user input
 	status       string          // Outputs operation status and error messages
+	keytable     *KeyTable       // A table storing all imported keys
 }
 
 // Entry point
@@ -28,7 +42,6 @@ func main() {
 	settings, _ := gtk.SettingsGetDefault()
 	settings.SetProperty("gtk-application-prefer-dark-theme", true)
 	window := initialize()
-
 	window.win.ShowAll()
 	gtk.Main()
 }
@@ -90,11 +103,96 @@ func createScrollableTextArea(ctx *WindowCtx) *gtk.TextBuffer {
 	textView.SetWrapMode(gtk.WRAP_CHAR)
 	// Set the size of the scrollable text area
 	scrollableTextArea.SetSizeRequest(440, 450)
-	ctx.fixed.Put(scrollableTextArea, 290, 80)
+	ctx.fixed.Put(scrollableTextArea, 245, 80)
 	return buf
 }
 
-func createTable() {}
+func onEmissionReceived(tv *gtk.TreeView, path *gtk.TreePath, column *gtk.TreeViewColumn) {
+
+	tvmodel, _ := tv.GetModel()
+	sel, _ := tv.GetSelection()
+	_, iter, _ := sel.GetSelected()
+	nenf := tvmodel.ToTreeModel().IterNChildren(iter)
+	var child gtk.TreeIter
+	for ind := 0; ind < nenf; ind++ {
+		tvmodel.ToTreeModel().IterParent(&child, iter)
+	}
+	fmt.Println("clicked!")
+}
+
+// Connect the signal handler to the object's signal *gtk.Object.Connect("signal-name", onEmissionReceived, nil)
+
+func createAndFillModel() *gtk.TreeModel {
+
+	inColumns := []int{0, 1, 2}
+	inValues0 := []interface{}{000, "test0", "PRIVATE"}
+	inValues1 := []interface{}{555, "test1", "PUBLIC"}
+	inValues2 := []interface{}{111, "test3", "PRIVATE"}
+	inValues3 := []interface{}{888, "test4", "PRIVATE"}
+	inValues4 := []interface{}{-100, "test5", "PUBLIC"}
+
+	store, _ := gtk.ListStoreNew(glib.TYPE_STRING, glib.TYPE_STRING, glib.TYPE_STRING)
+	iter := store.Append()
+	store.InsertWithValues(iter, 0, inColumns, inValues0)
+	store.InsertWithValues(iter, 1, inColumns, inValues1)
+	store.InsertWithValues(iter, 2, inColumns, inValues2)
+	store.InsertWithValues(iter, 3, inColumns, inValues3)
+	store.InsertWithValues(iter, 4, inColumns, inValues4)
+	return store.ToTreeModel()
+}
+
+// Sets up the key table
+func setupKeyTable(ctx *WindowCtx) {
+
+	newGrid, _ := gtk.GridNew()
+	newGrid.SetColumnHomogeneous(true)
+	newGrid.SetRowHomogeneous(true)
+
+	newTreeView, _ := gtk.TreeViewNew()
+	for i, columnTitle := range []string{"Key ID:     ", "Key Name:    ", "Type:    "} {
+		renderer, _ := gtk.CellRendererTextNew()
+		column, _ := gtk.TreeViewColumnNewWithAttribute(columnTitle, renderer, "text", i)
+		newTreeView.AppendColumn(column)
+	}
+
+	newScrollableTreeList, _ := gtk.ScrolledWindowNew(nil, nil)
+	newScrollableTreeList.SetVExpand(true)
+	newScrollableTreeList.SetSizeRequest(245, 450)
+
+	newGrid.Attach(newScrollableTreeList, 0, 0, 8, 10)
+	newScrollableTreeList.Add(newTreeView)
+
+	ctx.keytable = &KeyTable{
+		grid:               newGrid,
+		treeview:           newTreeView,
+		scrollableTreelist: newScrollableTreeList,
+		ID_COLUMN:          0,
+	}
+
+	ctx.fixed.Put(ctx.keytable.grid, 700, 80)
+	newTreeView.SetModel(createAndFillModel())
+	newTreeView.SetGridLines(gtk.TREE_VIEW_GRID_LINES_BOTH)
+	newTreeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) {
+		// Get the list store
+		liststore, _ := tv.GetModel()
+
+		sel, _ := tv.GetSelection()
+		_, iter, _ := sel.GetSelected()
+
+		// Get the value from the list store
+		id, _ := liststore.ToTreeModel().GetValue(iter, 0)
+		name, _ := liststore.ToTreeModel().GetValue(iter, 1)
+		keyType, _ := liststore.ToTreeModel().GetValue(iter, 2)
+
+		idVal, _ := id.GoValue()
+		nameVal, _ := name.GetString()
+		keyVal, _ := keyType.GetString()
+		// Print the value to the console
+
+		ctx.status = "Key data: " + idVal.(string) + nameVal + keyVal
+		fmt.Println("Key data: ", idVal, nameVal, keyVal)
+	})
+}
 
 // Sets the window to the initial state.
 func initialize() *WindowCtx {
@@ -113,6 +211,7 @@ func initialize() *WindowCtx {
 	setupButtons(&ctx)
 	setupLabels(&ctx)
 	setupMenuBar(ctx.fixed)
+	setupKeyTable(&ctx)
 
 	cssProvider, _ := gtk.CssProviderNew()
 	cssProvider.LoadFromPath("style.css")
@@ -127,6 +226,7 @@ func (ctx *WindowCtx) Reset() {
 	ctx.initialState = true
 	ctx.loadedFile = nil
 	ctx.notePad = createScrollableTextArea(ctx)
+	setupKeyTable(ctx)
 	ctx.status = "Status: Ready"
 	ctx.win.ShowAll()
 }
@@ -156,8 +256,8 @@ func setupLabels(ctx *WindowCtx) {
 	buttonsLabel.SetName("statusLabel")  //for CSS styling
 
 	ctx.fixed.Put(buttonsLabel, 40, 40)
-	ctx.fixed.Put(notePadLabel, 290, 40)
-	ctx.fixed.Put(statusLabel, 290, 545)
+	ctx.fixed.Put(notePadLabel, 245, 40)
+	ctx.fixed.Put(statusLabel, 245, 545)
 
 }
 
@@ -176,4 +276,18 @@ func setupButtons(ctx *WindowCtx) {
 		ctx.Reset()
 	})
 	ctx.fixed.Put(reset, 40, 510)
+}
+
+func ScanDir() []string {
+	files, err := ioutil.ReadDir("\\keys")
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	var fileNames []string
+	for _, file := range files {
+		fileNames = append(fileNames, file.Name())
+	}
+	return fileNames
 }
