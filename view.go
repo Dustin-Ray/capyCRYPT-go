@@ -23,7 +23,7 @@ type WindowCtx struct {
 	initialState  bool            // Signals if window has is waiting for user input
 	status        *gtk.Label      // Outputs operation status and error messages
 	keytable      *KeyTable       // A table storing all imported keys
-	loadedKey     *KeyPair        // The key to be used for any asymetric encryptions
+	loadedKey     *KeyObj         // The key to be used for any asymetric encryptions
 	ShowLoadedKey func()          //displays loaded key
 }
 

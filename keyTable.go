@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/gotk3/gotk3/glib"
@@ -14,20 +13,27 @@ type KeyTable struct {
 	store              *gtk.ListStore      //Contains a list of keys
 	scrollableTreelist *gtk.ScrolledWindow // Allows scrolling for long list of keys
 	grid               *gtk.Grid           // Grid container for TreeView
-	keyList            map[string]KeyPair  // A list of all keys currently stored in this session
+	keyList            map[string]KeyObj   // A list of all keys currently stored in this session
 }
 
-type KeyPair struct {
-	Id      string `json:"Id"`
-	Owner   string `json:"Owner"`
-	KeyType string `json:"KeyType"`
-	PubKey  string `json:"PubKey"`
-	PrivKey string `json:"PrivKey"`
+type KeyObj struct {
+	Id      string `json:"Id"`      //Represents the unique ID of the key
+	Owner   string `json:"Owner"`   //Represents the owner of the key, can be arbitrary
+	KeyType string `json:"KeyType"` /*Acceptable values are PUBLIC or PRIVATE.
+	PUBLIC keys are used only for encryptions, while PRIVATE keys can
+	encrypt or decrypt.
+	*/
+	PubKeyX     string `json:"PubKeyX"`     //big.Int value representing E521 X coordinate
+	PubKeyY     string `json:"PubKeyY"`     //big.Int value representing E521 X coordinate
+	PrivKey     string `json:"PrivKey"`     //big.Int value representing secret scalar, nil if KeyType is PUBLIC
+	DateCreated string `json:"DateCreated"` //Date key was generated
+	Signature   string `json:"Signature"`   //Nil unless PUBLIC. Signs 128 bit SHA3 hash of this KeyObj
 }
 
+// Converts JSON to KeyObj. Returns error if conversion is unsuccessful.
 func (kt *KeyTable) JsonToKey(ctx *WindowCtx, filename string) error {
 	data, _ := os.ReadFile(filename)
-	var result = KeyPair{}
+	var result = KeyObj{}
 	err := json.Unmarshal(data, &result)
 	if err != nil {
 		return err
@@ -36,21 +42,24 @@ func (kt *KeyTable) JsonToKey(ctx *WindowCtx, filename string) error {
 	return nil
 }
 
-func KeyToJSON(key *KeyPair) ([]byte, error) {
-	fmt.Println(key)
-	u, err := json.Marshal(KeyPair{
-		Id:      key.Id,
-		Owner:   key.Owner,
-		KeyType: key.KeyType,
-		PubKey:  key.PubKey,
-		PrivKey: key.PrivKey})
+// Converts a key to JSON format
+func KeyToJSON(key *KeyObj) ([]byte, error) {
+	u, err := json.Marshal(KeyObj{
+		Id:          key.Id,
+		Owner:       key.Owner,
+		KeyType:     key.KeyType,
+		PubKeyX:     key.PubKeyX,
+		PubKeyY:     key.PubKeyY,
+		PrivKey:     key.PrivKey,
+		DateCreated: key.DateCreated,
+		Signature:   key.Signature})
 	return u, err
 }
 
-func (kt *KeyTable) importKey(ctx *WindowCtx, key KeyPair) {
-	// key := KeyPair{id: "12300", owner: "Jack Smith", keyType: "PRIVATE"}
+// Attempts to parse a JSON file into a KeyObj. Declines to import duplicate keys.
+func (kt *KeyTable) importKey(ctx *WindowCtx, key KeyObj) {
 	query := kt.keyList[key.Id]
-	emptyKey := KeyPair{}
+	emptyKey := KeyObj{}
 	if query == emptyKey {
 		kt.keyList[key.Id] = key
 		updateStore(kt, &key)
@@ -60,13 +69,8 @@ func (kt *KeyTable) importKey(ctx *WindowCtx, key KeyPair) {
 	}
 }
 
-// Populate the model with imported key
-func createAndFillModel() *gtk.ListStore {
-	store, _ := gtk.ListStoreNew(glib.TYPE_STRING, glib.TYPE_STRING, glib.TYPE_STRING)
-	return store
-}
-
-func updateStore(keyTable *KeyTable, keyData *KeyPair) {
+// updates the list store with a new key
+func updateStore(keyTable *KeyTable, keyData *KeyObj) {
 
 	//create a row of data to append
 	inValues := []interface{}{keyData.Id, keyData.Owner, keyData.KeyType}
@@ -75,6 +79,12 @@ func updateStore(keyTable *KeyTable, keyData *KeyPair) {
 	inColumns := []int{0, 1, 2}
 	keyTable.store.InsertWithValues(iter, 0, inColumns, inValues)
 	keyTable.treeview.SetModel(keyTable.store.ToTreeModel())
+}
+
+// Populate the model with imported key
+func createAndFillModel() *gtk.ListStore {
+	store, _ := gtk.ListStoreNew(glib.TYPE_STRING, glib.TYPE_STRING, glib.TYPE_STRING)
+	return store
 }
 
 // Sets up the key table
@@ -102,7 +112,7 @@ func setupKeyTable(ctx *WindowCtx) {
 		grid:               newGrid,
 		treeview:           newTreeView,
 		scrollableTreelist: newScrollableTreeList,
-		keyList:            make(map[string]KeyPair),
+		keyList:            make(map[string]KeyObj),
 	}
 
 	ctx.fixed.Put(ctx.keytable.grid, 710, 80)
@@ -118,16 +128,9 @@ func setupKeyTable(ctx *WindowCtx) {
 
 		// Get the value from the list store
 		id, _ := liststore.ToTreeModel().GetValue(iter, 0)
-		name, _ := liststore.ToTreeModel().GetValue(iter, 1)
-		keyType, _ := liststore.ToTreeModel().GetValue(iter, 2)
-
 		idVal, _ := id.GetString()
-		nameVal, _ := name.GetString()
-		keyVal, _ := keyType.GetString()
-		// Print the value to the console
-		var test = ctx.keytable.keyList[idVal]
-		ctx.status.SetText("Key data: " + idVal + nameVal + keyVal)
-		ctx.loadedKey = &test
+		var lookupKey = ctx.keytable.keyList[idVal]
+		ctx.loadedKey = &lookupKey
 		ctx.updateStatus("key " + ctx.loadedKey.Id + " selected")
 	})
 }
