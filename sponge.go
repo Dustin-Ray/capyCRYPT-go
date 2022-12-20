@@ -16,7 +16,7 @@ func SpongeAbsorb(m *[]byte, capacity int) *[25]uint64 {
 	return &S
 }
 
-func SpongeSqueeze(S *[25]uint64, rate, bitLength int) []byte {
+func SpongeSqueeze(S *[25]uint64, bitLength, rate int) []byte {
 
 	var out []uint64 //FIPS 202 Algorithm 8 Step 8
 	offset := 0

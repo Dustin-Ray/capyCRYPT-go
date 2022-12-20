@@ -1,6 +1,6 @@
 package main
 
-func encode_string(S []byte) []byte { return append(lrEncode(uint64(len(S)*8), false), S...) }
+func encodeString(S []byte) []byte { return append(lrEncode(uint64(len(S)*8), false), S...) }
 
 func bytepad(X []byte, w uint64) []byte {
 

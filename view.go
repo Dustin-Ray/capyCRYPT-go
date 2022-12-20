@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
@@ -27,7 +26,7 @@ type WindowCtx struct {
 	loadedFile   *os.File        // Represents any file currently pointed to
 	notePad      *gtk.TextBuffer // The text area where input and output is processed
 	initialState bool            // Signals if window has is waiting for user input
-	status       string          // Outputs operation status and error messages
+	status       *gtk.Label      // Outputs operation status and error messages
 	keytable     *KeyTable       // A table storing all imported keys
 }
 
@@ -42,13 +41,37 @@ func main() {
 	gtk.Main()
 }
 
+// Sets the window to the initial state.
+func initialize() *WindowCtx {
+
+	ctx := WindowCtx{}
+	ctx.win = setupWindow()
+	ctx.fixed = newFixed()
+
+	ctx.initialState = true
+	ctx.win.Add(ctx.fixed)
+
+	ctx.loadedFile = nil
+	ctx.notePad = createScrollableTextArea(&ctx)
+	ctx.status, _ = gtk.LabelNew("")
+	ctx.status.SetText("Status: Ready")
+
+	setupButtons(&ctx)
+	setupLabels(&ctx)
+	setupMenuBar(ctx.fixed)
+	setupKeyTable(&ctx)
+
+	cssProvider, _ := gtk.CssProviderNew()
+	cssProvider.LoadFromPath("style.css")
+	screen, _ := gdk.ScreenGetDefault()
+	gtk.AddProviderForScreen(screen, cssProvider, 0)
+	return &ctx
+}
+
 // Overrides layouts to provide direct placement of widgets
 func newFixed() *gtk.Fixed {
-	fixed, err := gtk.FixedNew()
+	fixed, _ := gtk.FixedNew()
 	fixed.SetSizeRequest(1000, 590)
-	if err != nil {
-		panic(err)
-	}
 	return fixed
 }
 
@@ -56,10 +79,7 @@ func newFixed() *gtk.Fixed {
 // "destroy" signal to exit the GTK main loop when it is destroyed.
 func setupWindow() *gtk.Window {
 
-	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
-	if err != nil {
-		panic(err)
-	}
+	win, _ := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	win.SetTitle("CryptoTool v 0.1")
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
@@ -90,6 +110,7 @@ func createScrollableTextArea(ctx *WindowCtx) *gtk.TextBuffer {
 		if ctx.initialState {
 			buf.SetText("")
 			ctx.initialState = false
+			textView.SetProperty("editable", true)
 		}
 	})
 
@@ -153,7 +174,7 @@ func setupKeyTable(ctx *WindowCtx) {
 
 	newScrollableTreeList, _ := gtk.ScrolledWindowNew(nil, nil)
 	newScrollableTreeList.SetVExpand(true)
-	newScrollableTreeList.SetSizeRequest(245, 450)
+	newScrollableTreeList.SetSizeRequest(255, 450)
 
 	newGrid.Attach(newScrollableTreeList, 0, 0, 8, 10)
 	newScrollableTreeList.Add(newTreeView)
@@ -164,7 +185,7 @@ func setupKeyTable(ctx *WindowCtx) {
 		scrollableTreelist: newScrollableTreeList,
 	}
 
-	ctx.fixed.Put(ctx.keytable.grid, 700, 80)
+	ctx.fixed.Put(ctx.keytable.grid, 710, 80)
 	newTreeView.SetModel(createAndFillModel())
 	newTreeView.SetGridLines(gtk.TREE_VIEW_GRID_LINES_BOTH)
 	newTreeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) string {
@@ -183,36 +204,10 @@ func setupKeyTable(ctx *WindowCtx) {
 		keyVal, _ := keyType.GetString()
 		// Print the value to the console
 
-		ctx.status = "Key data: " + idVal.(string) + nameVal + keyVal
+		ctx.status.SetText("Key data: " + idVal.(string) + nameVal + keyVal)
 		fmt.Println("Key data: ", idVal, nameVal, keyVal)
 		return ""
 	})
-}
-
-// Sets the window to the initial state.
-func initialize() *WindowCtx {
-
-	ctx := WindowCtx{}
-	ctx.win = setupWindow()
-	ctx.fixed = newFixed()
-
-	ctx.initialState = true
-	ctx.win.Add(ctx.fixed)
-
-	ctx.loadedFile = nil
-	ctx.notePad = createScrollableTextArea(&ctx)
-	ctx.status = "Status: Ready"
-
-	setupButtons(&ctx)
-	setupLabels(&ctx)
-	setupMenuBar(ctx.fixed)
-	setupKeyTable(&ctx)
-
-	cssProvider, _ := gtk.CssProviderNew()
-	cssProvider.LoadFromPath("style.css")
-	screen, _ := gdk.ScreenGetDefault()
-	gtk.AddProviderForScreen(screen, cssProvider, 0)
-	return &ctx
 }
 
 // Resets context to initial state
@@ -222,7 +217,7 @@ func (ctx *WindowCtx) Reset() {
 	ctx.loadedFile = nil
 	ctx.notePad = createScrollableTextArea(ctx)
 	setupKeyTable(ctx)
-	ctx.status = "Status: Ready"
+	ctx.status.SetText("Status: Ready")
 	ctx.win.ShowAll()
 }
 
@@ -230,13 +225,32 @@ func (ctx *WindowCtx) Reset() {
 func setupMenuBar(ctx *gtk.Fixed) {
 
 	menubar, _ := gtk.MenuBarNew()
-	fileMi, _ := gtk.MenuItemNewWithLabel("File")
-	edit, _ := gtk.MenuItemNewWithLabel("Keys")
+	fileMenu, _ := gtk.MenuItemNewWithLabel("File")
+	keysMenu, _ := gtk.MenuItemNewWithLabel("Keys")
+	keysDropDown, _ := gtk.MenuNew()
+	fileDropDown, _ := gtk.MenuNew()
 
-	menubar.Append(fileMi)
-	menubar.Append(edit)
+	keysMenu.SetSubmenu(keysDropDown)
+	fileMenu.SetSubmenu(fileDropDown)
+
+	keysImport, _ := gtk.MenuItemNewWithLabel("Import")
+	keysExport, _ := gtk.MenuItemNewWithLabel("Export")
+	fileLoad, _ := gtk.MenuItemNewWithLabel("Load File")
+	fileSave, _ := gtk.MenuItemNewWithLabel("Save File")
+	help, _ := gtk.MenuItemNewWithLabel("How To Use")
+	exit, _ := gtk.MenuItemNewWithLabel("Exit")
+
+	keysDropDown.Append(keysImport)
+	keysDropDown.Append(keysExport)
+
+	fileDropDown.Append(fileLoad)
+	fileDropDown.Append(fileSave)
+	fileDropDown.Append(help)
+	fileDropDown.Append(exit)
+
+	menubar.Append(fileMenu)
+	menubar.Append(keysMenu)
 	ctx.Add(menubar)
-
 }
 
 // Adds labels to window
@@ -244,20 +258,24 @@ func setupLabels(ctx *WindowCtx) {
 	// Create a label and add it to the fixed container
 	buttonsLabel, _ := gtk.LabelNew("Text Operations:")
 	notePadLabel, _ := gtk.LabelNew("Notepad:")
+	keysLabel, _ := gtk.LabelNew("Keys: (Double click to select)")
 	statusLabel, _ := gtk.LabelNew("Status: Ready")
 
 	buttonsLabel.SetName("textOpsLabel") //for CSS styling
 	notePadLabel.SetName("notepadLabel") //for CSS styling
 	buttonsLabel.SetName("statusLabel")  //for CSS styling
+	buttonsLabel.SetName("keysLabel")    //for CSS styling
 
-	ctx.fixed.Put(buttonsLabel, 40, 40)
-	ctx.fixed.Put(notePadLabel, 245, 40)
+	ctx.fixed.Put(buttonsLabel, 40, 50)
+	ctx.fixed.Put(notePadLabel, 245, 50)
+	ctx.fixed.Put(keysLabel, 710, 50)
 	ctx.fixed.Put(statusLabel, 245, 545)
 
 }
 
 // adds buttons in a factory style to fixed context
 func setupButtons(ctx *WindowCtx) {
+
 	labelList := []string{"Compute Hash", "Compute Tag", "Encrypt With Password", "Decrypt With Password",
 		"Generate Keypair", "Encrypt With Key", "Decrypt With Key", "Sign With Key", "Verify Signature"}
 
@@ -265,15 +283,22 @@ func setupButtons(ctx *WindowCtx) {
 
 	for i, label := range labelList {
 		btn, _ := gtk.ButtonNewWithLabel(label)
+
 		buttonList[i] = *btn
 		ctx.fixed.Put(btn, 40, 80+i*45)
 	}
 
+	buttonList[0].SetTooltipMarkup("Computes a SHA3-512 hash of the text in the notepad.")
 	buttonList[0].Connect("clicked", func() {
 		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-		regex := regexp.MustCompile(`(?m)^\s*\r?\n`)
-		text = regex.ReplaceAllString(text, "")
 		ctx.notePad.SetText(ComputeSHA3HASH(text))
+	}) //etc....
+
+	buttonList[1].SetTooltipMarkup("Computes a keyed hash of the notepad. The resulting hash can only be computed by a party who has knowledge of the password and the message.")
+	buttonList[1].Connect("clicked", func() {
+		password := showPasswordDialog(ctx.win, "authentication")
+		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+		ctx.notePad.SetText(ComputeTaggedHash(password, []byte(text), "T"))
 	}) //etc....
 
 	reset, _ := gtk.ButtonNewWithLabel("Reset")
