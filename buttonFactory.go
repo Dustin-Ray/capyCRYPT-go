@@ -21,7 +21,7 @@ func setupButtons(ctx *WindowCtx) {
 	buttonList[0].SetTooltipMarkup("Computes a SHA3-512 hash of the text in the notepad.")
 	buttonList[0].Connect("clicked", func() {
 		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-		ctx.notePad.SetText(ComputeSHA3HASH(text))
+		ctx.notePad.SetText(ComputeSHA3HASH(text, ctx.fileMode))
 		ctx.updateStatus("SHA3 hash computed successfully")
 	}) //etc....
 

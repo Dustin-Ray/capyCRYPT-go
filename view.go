@@ -16,15 +16,15 @@ Fixed holds all widgets so that they can be placed at precise pixels.
 The style of the window is set by style.css.
 */
 type WindowCtx struct {
-	win           *gtk.Window     // Main window containing fixed container
-	fixed         *gtk.Fixed      // Fixed allows for precise arbitrary placement of widgets
-	loadedFile    *os.File        // Represents any file currently pointed to
-	notePad       *gtk.TextBuffer // The text area where input and output is processed
-	initialState  bool            // Signals if window has is waiting for user input
-	status        *gtk.Label      // Outputs operation status and error messages
-	keytable      *KeyTable       // A table storing all imported keys
-	loadedKey     *KeyObj         // The key to be used for any asymetric encryptions
-	ShowLoadedKey func()          //displays loaded key
+	win          *gtk.Window     // Main window containing fixed container
+	fixed        *gtk.Fixed      // Fixed allows for precise arbitrary placement of widgets
+	loadedFile   *os.File        // Represents any file currently pointed to
+	notePad      *gtk.TextBuffer // The text area where input and output is processed
+	initialState bool            // Signals if window has is waiting for user input
+	status       *gtk.Label      // Outputs operation status and error messages
+	keytable     *KeyTable       // A table storing all imported keys
+	loadedKey    *KeyObj         // The key to be used for any asymetric encryptions
+	fileMode     bool            //Determines whether to process a loaded file or notepad text
 }
 
 // Entry point
@@ -45,11 +45,11 @@ func initialize() *WindowCtx {
 	ctx.fixed = newFixed()
 
 	ctx.initialState = true
+	ctx.fileMode = false
 	ctx.win.Add(ctx.fixed)
 
 	ctx.loadedFile = nil
 	ctx.notePad = createScrollableTextArea(&ctx)
-	ctx.ShowLoadedKey = func() { fmt.Println(ctx.loadedKey) }
 
 	ctx.status, _ = gtk.LabelNew("")
 	ctx.status.SetText("Status: Ready")
@@ -103,17 +103,15 @@ func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
 	// Connect the drag and drop area signals
 	textView.Connect("drag-data-received", func(ddarea *gtk.Box, ctx *gdk.DragContext, x int, y int, data *gtk.SelectionData, info uint, time uint32) {
 		ctxWin.initialState = false
+		ctxWin.fileMode = true
 		buf.SetText("")
 		var replacer = strings.NewReplacer("\r\n", "")
 		filePath := replacer.Replace(string(data.GetData()))
 		regex := regexp.MustCompile(`^.{7}`)
 		filePath = regex.ReplaceAllString(filePath, "")
-		fmt.Println(filePath)
-
 		// open the dropped file
 		file, err := os.Open(filePath)
 		if err != nil {
-
 			buf.SetText(err.Error())
 		} else {
 			ctxWin.loadedFile = file
