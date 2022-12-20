@@ -3,17 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/gotk3/gotk3/gdk"
-	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
-
-type KeyTable struct {
-	treeview           *gtk.TreeView       // Displays list of keys currently imported
-	scrollableTreelist *gtk.ScrolledWindow // Allows scrolling for long list of keys
-	grid               *gtk.Grid           // Grid container for TreeView
-}
 
 /*
 A window context is an object that contains a Window and a Fixed.
@@ -21,19 +16,20 @@ Fixed holds all widgets so that they can be placed at precise pixels.
 The style of the window is set by style.css.
 */
 type WindowCtx struct {
-	win          *gtk.Window
-	fixed        *gtk.Fixed
-	loadedFile   *os.File        // Represents any file currently pointed to
-	notePad      *gtk.TextBuffer // The text area where input and output is processed
-	initialState bool            // Signals if window has is waiting for user input
-	status       *gtk.Label      // Outputs operation status and error messages
-	keytable     *KeyTable       // A table storing all imported keys
+	win           *gtk.Window     // Main window containing fixed container
+	fixed         *gtk.Fixed      // Fixed allows for precise arbitrary placement of widgets
+	loadedFile    *os.File        // Represents any file currently pointed to
+	notePad       *gtk.TextBuffer // The text area where input and output is processed
+	initialState  bool            // Signals if window has is waiting for user input
+	status        *gtk.Label      // Outputs operation status and error messages
+	keytable      *KeyTable       // A table storing all imported keys
+	loadedKey     *KeyPair        // The key to be used for any asymetric encryptions
+	ShowLoadedKey func()          //displays loaded key
 }
 
 // Entry point
 func main() {
 	gtk.Init(nil)
-
 	settings, _ := gtk.SettingsGetDefault()
 	settings.SetProperty("gtk-application-prefer-dark-theme", true)
 	window := initialize()
@@ -53,12 +49,15 @@ func initialize() *WindowCtx {
 
 	ctx.loadedFile = nil
 	ctx.notePad = createScrollableTextArea(&ctx)
+	ctx.ShowLoadedKey = func() { fmt.Println(ctx.loadedKey) }
+
 	ctx.status, _ = gtk.LabelNew("")
 	ctx.status.SetText("Status: Ready")
+	ctx.fixed.Put(ctx.status, 245, 535)
 
 	setupButtons(&ctx)
 	setupLabels(&ctx)
-	setupMenuBar(ctx.fixed)
+	setupMenuBar(&ctx)
 	setupKeyTable(&ctx)
 
 	cssProvider, _ := gtk.CssProviderNew()
@@ -67,6 +66,9 @@ func initialize() *WindowCtx {
 	gtk.AddProviderForScreen(screen, cssProvider, 0)
 	return &ctx
 }
+
+// Updates the status message following an operation
+func (w *WindowCtx) updateStatus(message string) { w.status.SetText("Status: " + message) }
 
 // Overrides layouts to provide direct placement of widgets
 func newFixed() *gtk.Fixed {
@@ -92,7 +94,7 @@ func setupWindow() *gtk.Window {
 Creates a scrollable text area to display input and output of operations. Contains
 drag and drop functionality for file operations.
 */
-func createScrollableTextArea(ctx *WindowCtx) *gtk.TextBuffer {
+func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
 	scrollableTextArea, _ := gtk.ScrolledWindowNew(nil, nil)
 	buf, _ := gtk.TextBufferNew(nil)
 	textView, _ := gtk.TextViewNewWithBuffer(buf)
@@ -100,114 +102,42 @@ func createScrollableTextArea(ctx *WindowCtx) *gtk.TextBuffer {
 	buf.SetText("Enter text or drag and drop file..")
 	// Connect the drag and drop area signals
 	textView.Connect("drag-data-received", func(ddarea *gtk.Box, ctx *gdk.DragContext, x int, y int, data *gtk.SelectionData, info uint, time uint32) {
-		textView.SetBuffer(buf)
-		buf.SetText("File Dropped: " + string(data.GetData()))
-		textView.SetProperty("editable", false)
+		ctxWin.initialState = false
+		buf.SetText("")
+		var replacer = strings.NewReplacer("\r\n", "")
+		filePath := replacer.Replace(string(data.GetData()))
+		regex := regexp.MustCompile(`^.{7}`)
+		filePath = regex.ReplaceAllString(filePath, "")
+		fmt.Println(filePath)
+
+		// open the dropped file
+		file, err := os.Open(filePath)
+		if err != nil {
+
+			buf.SetText(err.Error())
+		} else {
+			ctxWin.loadedFile = file
+		}
+		textView.SetCanFocus(false)
 		textView.SetProperty("cursor-visible", false)
+		buf.SetText("Successfully loaded: ")
+		ctxWin.updateStatus("Switched to file processing mode")
 	})
 
 	textView.Connect("button-press-event", func() {
-		if ctx.initialState {
+		if ctxWin.initialState {
 			buf.SetText("")
-			ctx.initialState = false
+			ctxWin.initialState = false
 			textView.SetProperty("editable", true)
 		}
 	})
-
+	textView.SetBuffer(buf)
 	scrollableTextArea.Add(textView)
-	// Set the scrolling policy
 	scrollableTextArea.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 	textView.SetWrapMode(gtk.WRAP_CHAR)
-	// Set the size of the scrollable text area
 	scrollableTextArea.SetSizeRequest(440, 450)
-	ctx.fixed.Put(scrollableTextArea, 245, 80)
+	ctxWin.fixed.Put(scrollableTextArea, 245, 80)
 	return buf
-}
-
-func onEmissionReceived(tv *gtk.TreeView, path *gtk.TreePath, column *gtk.TreeViewColumn) {
-
-	tvmodel, _ := tv.GetModel()
-	sel, _ := tv.GetSelection()
-	_, iter, _ := sel.GetSelected()
-	nenf := tvmodel.ToTreeModel().IterNChildren(iter)
-	var child gtk.TreeIter
-	for ind := 0; ind < nenf; ind++ {
-		tvmodel.ToTreeModel().IterParent(&child, iter)
-	}
-	fmt.Println("clicked!")
-}
-
-// Connect the signal handler to the object's signal *gtk.Object.Connect("signal-name", onEmissionReceived, nil)
-
-func createAndFillModel() *gtk.TreeModel {
-
-	inColumns := []int{0, 1, 2}
-	inValues0 := []interface{}{000, "test0", "PRIVATE"}
-	inValues1 := []interface{}{555, "test1", "PUBLIC"}
-	inValues2 := []interface{}{111, "test3", "PRIVATE"}
-	inValues3 := []interface{}{888, "test4", "PRIVATE"}
-	inValues4 := []interface{}{-100, "test5", "PUBLIC"}
-
-	store, _ := gtk.ListStoreNew(glib.TYPE_STRING, glib.TYPE_STRING, glib.TYPE_STRING)
-	iter := store.Append()
-	store.InsertWithValues(iter, 0, inColumns, inValues0)
-	store.InsertWithValues(iter, 1, inColumns, inValues1)
-	store.InsertWithValues(iter, 2, inColumns, inValues2)
-	store.InsertWithValues(iter, 3, inColumns, inValues3)
-	store.InsertWithValues(iter, 4, inColumns, inValues4)
-	return store.ToTreeModel()
-}
-
-// Sets up the key table
-func setupKeyTable(ctx *WindowCtx) {
-
-	newGrid, _ := gtk.GridNew()
-	newGrid.SetColumnHomogeneous(true)
-	newGrid.SetRowHomogeneous(true)
-
-	newTreeView, _ := gtk.TreeViewNew()
-	for i, columnTitle := range []string{"Key ID:     ", "Key Name:    ", "Type:    "} {
-		renderer, _ := gtk.CellRendererTextNew()
-		column, _ := gtk.TreeViewColumnNewWithAttribute(columnTitle, renderer, "text", i)
-		newTreeView.AppendColumn(column)
-	}
-
-	newScrollableTreeList, _ := gtk.ScrolledWindowNew(nil, nil)
-	newScrollableTreeList.SetVExpand(true)
-	newScrollableTreeList.SetSizeRequest(255, 450)
-
-	newGrid.Attach(newScrollableTreeList, 0, 0, 8, 10)
-	newScrollableTreeList.Add(newTreeView)
-
-	ctx.keytable = &KeyTable{
-		grid:               newGrid,
-		treeview:           newTreeView,
-		scrollableTreelist: newScrollableTreeList,
-	}
-
-	ctx.fixed.Put(ctx.keytable.grid, 710, 80)
-	newTreeView.SetModel(createAndFillModel())
-	newTreeView.SetGridLines(gtk.TREE_VIEW_GRID_LINES_BOTH)
-	newTreeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) string {
-		// Get the list store
-		liststore, _ := tv.GetModel()
-		sel, _ := tv.GetSelection()
-		_, iter, _ := sel.GetSelected()
-
-		// Get the value from the list store
-		id, _ := liststore.ToTreeModel().GetValue(iter, 0)
-		name, _ := liststore.ToTreeModel().GetValue(iter, 1)
-		keyType, _ := liststore.ToTreeModel().GetValue(iter, 2)
-
-		idVal, _ := id.GoValue()
-		nameVal, _ := name.GetString()
-		keyVal, _ := keyType.GetString()
-		// Print the value to the console
-
-		ctx.status.SetText("Key data: " + idVal.(string) + nameVal + keyVal)
-		fmt.Println("Key data: ", idVal, nameVal, keyVal)
-		return ""
-	})
 }
 
 // Resets context to initial state
@@ -222,7 +152,7 @@ func (ctx *WindowCtx) Reset() {
 }
 
 // Adds file menu bar to window.
-func setupMenuBar(ctx *gtk.Fixed) {
+func setupMenuBar(ctx *WindowCtx) {
 
 	menubar, _ := gtk.MenuBarNew()
 	fileMenu, _ := gtk.MenuItemNewWithLabel("File")
@@ -240,6 +170,19 @@ func setupMenuBar(ctx *gtk.Fixed) {
 	help, _ := gtk.MenuItemNewWithLabel("How To Use")
 	exit, _ := gtk.MenuItemNewWithLabel("Exit")
 
+	// keysImport.Connect("activate", func() { importKey(ctx.keytable) })
+
+	keysImport.Connect("activate", func() { openDialog(ctx) })
+	keysExport.Connect("activate", func() {
+		if ctx.loadedKey != nil {
+			KeyToJSON(ctx.loadedKey)
+			saveDialog(ctx, "Save File")
+		} else {
+			ctx.updateStatus("Export failed - no key selected")
+		}
+
+	})
+
 	keysDropDown.Append(keysImport)
 	keysDropDown.Append(keysExport)
 
@@ -250,7 +193,7 @@ func setupMenuBar(ctx *gtk.Fixed) {
 
 	menubar.Append(fileMenu)
 	menubar.Append(keysMenu)
-	ctx.Add(menubar)
+	ctx.fixed.Add(menubar)
 }
 
 // Adds labels to window
@@ -258,8 +201,7 @@ func setupLabels(ctx *WindowCtx) {
 	// Create a label and add it to the fixed container
 	buttonsLabel, _ := gtk.LabelNew("Text Operations:")
 	notePadLabel, _ := gtk.LabelNew("Notepad:")
-	keysLabel, _ := gtk.LabelNew("Keys: (Double click to select)")
-	statusLabel, _ := gtk.LabelNew("Status: Ready")
+	keysLabel, _ := gtk.LabelNew("Select an encryption key: ")
 
 	buttonsLabel.SetName("textOpsLabel") //for CSS styling
 	notePadLabel.SetName("notepadLabel") //for CSS styling
@@ -269,42 +211,70 @@ func setupLabels(ctx *WindowCtx) {
 	ctx.fixed.Put(buttonsLabel, 40, 50)
 	ctx.fixed.Put(notePadLabel, 245, 50)
 	ctx.fixed.Put(keysLabel, 710, 50)
-	ctx.fixed.Put(statusLabel, 245, 545)
 
 }
 
-// adds buttons in a factory style to fixed context
-func setupButtons(ctx *WindowCtx) {
-
-	labelList := []string{"Compute Hash", "Compute Tag", "Encrypt With Password", "Decrypt With Password",
-		"Generate Keypair", "Encrypt With Key", "Decrypt With Key", "Sign With Key", "Verify Signature"}
-
-	buttonList := make([]gtk.Button, len(labelList))
-
-	for i, label := range labelList {
-		btn, _ := gtk.ButtonNewWithLabel(label)
-
-		buttonList[i] = *btn
-		ctx.fixed.Put(btn, 40, 80+i*45)
+// A dialog that exports key data to a file
+func saveDialog(ctx *WindowCtx, name string) {
+	// Create a dialog that allows the user to save a file
+	dialog, err := gtk.FileChooserDialogNewWith2Buttons("Save File", ctx.win,
+		gtk.FILE_CHOOSER_ACTION_SAVE,
+		"Cancel", gtk.RESPONSE_CANCEL,
+		"Save", gtk.RESPONSE_ACCEPT)
+	if err != nil {
+		panic(err)
 	}
 
-	buttonList[0].SetTooltipMarkup("Computes a SHA3-512 hash of the text in the notepad.")
-	buttonList[0].Connect("clicked", func() {
-		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-		ctx.notePad.SetText(ComputeSHA3HASH(text))
-	}) //etc....
+	// Show the dialog and wait for the user to respond
+	response := dialog.Run()
+	if response == gtk.RESPONSE_ACCEPT {
+		// Get the filename from the dialog
+		filename := dialog.GetFilename()
+		jsonKeyData, _ := KeyToJSON(ctx.loadedKey)
 
-	buttonList[1].SetTooltipMarkup("Computes a keyed hash of the notepad. The resulting hash can only be computed by a party who has knowledge of the password and the message.")
-	buttonList[1].Connect("clicked", func() {
-		password := showPasswordDialog(ctx.win, "authentication")
-		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-		ctx.notePad.SetText(ComputeTaggedHash(password, []byte(text), "T"))
-	}) //etc....
+		// Create the file
+		file, err := os.Create(filename)
+		if err != nil {
+			ctx.updateStatus("Failed to create file")
+			dialog.Destroy()
+		}
+		defer file.Close()
+		file.Write(jsonKeyData)
+		if err != nil {
+			ctx.updateStatus("Failed to write key")
+			dialog.Destroy()
+		}
+		ctx.updateStatus("Key save successful: " + filename)
+	}
 
-	reset, _ := gtk.ButtonNewWithLabel("Reset")
-	reset.SetName("resetButton") //for CSS styling
-	reset.Connect("button-press-event", func() {
-		ctx.Reset()
-	})
-	ctx.fixed.Put(reset, 40, 510)
+	// Destroy the dialog
+	dialog.Destroy()
+}
+
+// A dialog that opens a key file. Handles any error in parsing file to key
+func openDialog(ctx *WindowCtx) {
+
+	// Create a new FileChooserDialog to open a file
+	fileDialog, err := gtk.FileChooserDialogNewWith2Buttons("Open File", ctx.win,
+		gtk.FILE_CHOOSER_ACTION_OPEN,
+		"_Cancel", gtk.RESPONSE_CANCEL,
+		"_Open", gtk.RESPONSE_ACCEPT)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fileDialog.SetSizeRequest(200, 100)
+
+	// Show the dialog and wait for the user's response.
+	response := fileDialog.Run()
+	if response == gtk.RESPONSE_ACCEPT {
+		// If a file was selected, print out the name
+		filename := fileDialog.GetFilename()
+		err := ctx.keytable.JsonToKey(ctx, filename)
+		if err != nil {
+			ctx.updateStatus("Import failed - invalid key selected")
+		}
+	}
+	// Destroy the dialog when done
+	fileDialog.Destroy()
 }
