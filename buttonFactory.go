@@ -41,7 +41,7 @@ func setupButtons(ctx *WindowCtx) {
 		password := showPasswordDialog(ctx.win, "encryption")
 		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
 		ctx.notePad.SetText(BytesToHexString(encryptPW(password, []byte(text))))
-		ctx.updateStatus("Message tag computed successfully")
+		ctx.updateStatus("Encryption successful")
 	}) //etc....
 
 	buttonList[3].SetTooltipMarkup("Decrypts data under a passphrase. Can only be decrypted by parties with knowledge of the passphrase.")
@@ -50,7 +50,7 @@ func setupButtons(ctx *WindowCtx) {
 		password := showPasswordDialog(ctx.win, "encryption")
 		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
 		ctx.notePad.SetText(decryptPW(string(password), text))
-		ctx.updateStatus("Message tag computed successfully")
+		ctx.updateStatus("Decryption successful")
 	}) //etc....
 
 	buttonList[4].SetTooltipMarkup("Generates a Schnorr E521 keypair from supplied password.")

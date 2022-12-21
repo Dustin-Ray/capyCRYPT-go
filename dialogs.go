@@ -206,14 +206,14 @@ func rightCLickMenu(ctx *WindowCtx) {
 	menu.Append(menuItem)
 
 	// Connect a signal handler to the MenuItem's "activate" signal.
-	menuItem.Connect("activate", func() { showKeyDetails() })
+	menuItem.Connect("activate", func() { showKeyDetails(ctx) })
 	menu.ShowAll()
 	// Connect the "button-press-event" signal to our handler.
 	ctx.keytable.treeview.Connect("button-press-event", func(treeView *gtk.TreeView, event *gdk.Event) {
 		// Cast the Event to a GdkEventButton.
 		eventButton := gdk.EventButtonNewFromEvent(event)
 		// Check if the right mouse button was pressed.
-		if eventButton.Button() == 3 {
+		if eventButton.Button() == 3 && ctx.loadedKey != nil {
 			// Show the Menu at the position of the mouse click.
 			menu.PopupAtPointer(event)
 		}
@@ -221,23 +221,42 @@ func rightCLickMenu(ctx *WindowCtx) {
 }
 
 // showDialog displays a new smaller blank window dialog with text in it.
-func showKeyDetails() {
+func showKeyDetails(ctx *WindowCtx) {
 	dialog, _ := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	fixed, _ := gtk.FixedNew()
 
 	dialog.SetPosition(gtk.WIN_POS_CENTER)
-	dialog.SetDefaultSize(400, 400)
+	dialog.SetDefaultSize(490, 365)
 	dialog.SetTitle("Key details: ")
 
 	// Create a label and set its text.
-	label, _ := gtk.LabelNew("ID: ")
-	label1, _ := gtk.LabelNew("This is a dialog window.")
-	label2, _ := gtk.LabelNew("This is a dialog window.")
+	key := ctx.loadedKey
+	ID, _ := gtk.LabelNew("ID: " + key.Id)
+	Owner, _ := gtk.LabelNew("OWNER: " + key.Owner)
+	KEYTYPE, _ := gtk.LabelNew("KEY TYPE: " + key.KeyType)
+	PubKeyX, _ := gtk.LabelNew("PUB KEY X: ")
+	PubKeyY, _ := gtk.LabelNew("PUB KEY Y: ")
+	PrivKey, _ := gtk.LabelNew("PRIV KEY: " + "NONE")
+	if ctx.loadedKey.KeyType != "NONE" {
+		PrivKey, _ = gtk.LabelNew("PRIV KEY: " + ctx.loadedKey.PrivKey)
+	}
+	DateCreated, _ := gtk.LabelNew("DATE CREATED: " + key.DateCreated)
 
 	dialog.Add(fixed)
-	fixed.Put(label, 25, 25)
-	fixed.Put(label1, 25, 50)
-	fixed.Put(label2, 25, 75)
+	fixed.Put(ID, 25, 25)
+	fixed.Put(Owner, 25, 60)
+	fixed.Put(KEYTYPE, 25, 95)
+
+	pubKeyXWindow := getScrollableTextArea(ctx, ctx.loadedKey.PubKeyX)
+	fixed.Put(PubKeyX, 25, 130)
+	fixed.Put(&pubKeyXWindow, 25, 155)
+
+	pubKeyYWindow := getScrollableTextArea(ctx, ctx.loadedKey.PubKeyY)
+	fixed.Put(PubKeyY, 250, 130)
+	fixed.Put(&pubKeyYWindow, 250, 155)
+
+	fixed.Put(PrivKey, 25, 270)
+	fixed.Put(DateCreated, 25, 305)
 
 	dialog.ShowAll()
 }
@@ -303,4 +322,18 @@ func openDialog(ctx *WindowCtx) {
 	}
 	// Destroy the dialog when done
 	fileDialog.Destroy()
+}
+
+func getScrollableTextArea(ctx *WindowCtx, textForBuffer string) gtk.ScrolledWindow {
+
+	scrollableTextArea, _ := gtk.ScrolledWindowNew(nil, nil)
+	buf, _ := gtk.TextBufferNew(nil)
+	textView, _ := gtk.TextViewNewWithBuffer(buf)
+	textView.SetBuffer(buf)
+	scrollableTextArea.Add(textView)
+	scrollableTextArea.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+	textView.SetWrapMode(gtk.WRAP_CHAR)
+	scrollableTextArea.SetSizeRequest(200, 100)
+	buf.SetText(textForBuffer)
+	return *scrollableTextArea
 }
