@@ -30,9 +30,12 @@ type WindowCtx struct {
 // Entry point
 func main() {
 	gtk.Init(nil)
-	settings, _ := gtk.SettingsGetDefault()
-	settings.SetProperty("gtk-application-prefer-dark-theme", true)
 	window := initialize()
+	settings, _ := gtk.SettingsGetDefault()
+	err := settings.SetProperty("gtk-application-prefer-dark-theme", true) //try to default to dark theme
+	if err != nil {
+		window.notePad.SetText("Failed to load dark theme")
+	}
 	window.win.ShowAll()
 	gtk.Main()
 }
@@ -99,7 +102,7 @@ func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
 	buf, _ := gtk.TextBufferNew(nil)
 	textView, _ := gtk.TextViewNewWithBuffer(buf)
 	textView.SetName("textArea")
-	buf.SetText("Enter text or drag and drop file..")
+	buf.SetText("Enter text or drag and drop file...")
 	// Connect the drag and drop area signals
 	textView.Connect("drag-data-received", func(ddarea *gtk.Box, ctx *gdk.DragContext, x int, y int, data *gtk.SelectionData, info uint, time uint32) {
 		ctxWin.initialState = false
@@ -168,8 +171,7 @@ func setupMenuBar(ctx *WindowCtx) {
 	help, _ := gtk.MenuItemNewWithLabel("How To Use")
 	exit, _ := gtk.MenuItemNewWithLabel("Exit")
 
-	// keysImport.Connect("activate", func() { importKey(ctx.keytable) })
-
+	//setup import and export funtionality
 	keysImport.Connect("activate", func() { openDialog(ctx) })
 	keysExport.Connect("activate", func() {
 		if ctx.loadedKey != nil {
@@ -196,7 +198,6 @@ func setupMenuBar(ctx *WindowCtx) {
 
 // Adds labels to window
 func setupLabels(ctx *WindowCtx) {
-	// Create a label and add it to the fixed container
 	buttonsLabel, _ := gtk.LabelNew("Text Operations:")
 	notePadLabel, _ := gtk.LabelNew("Notepad:")
 	keysLabel, _ := gtk.LabelNew("Select an encryption key: ")
@@ -242,10 +243,8 @@ func saveDialog(ctx *WindowCtx, name string) {
 			ctx.updateStatus("Failed to write key")
 			dialog.Destroy()
 		}
-		ctx.updateStatus("Key save successful: " + filename)
+		ctx.updateStatus("Key data saved to: " + filename)
 	}
-
-	// Destroy the dialog
 	dialog.Destroy()
 }
 

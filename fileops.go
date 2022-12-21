@@ -8,12 +8,13 @@ import (
 )
 
 func generateRandomBytes() []byte {
-	b := make([]byte, 136)
+	b := make([]byte, 64)
 	_, err := rand.Read(b)
 	if err != nil {
 		fmt.Println("error:", err)
 		return nil
 	}
+
 	return b
 }
 
@@ -37,4 +38,8 @@ func StateToByteArray(uint64s *[]uint64, bitLength int) []byte {
 		result = append(result, b...)
 	}
 	return result
+}
+
+func HexToBytes(hexString string) ([]byte, error) {
+	return hex.DecodeString(hexString)
 }

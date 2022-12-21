@@ -54,8 +54,16 @@ func BytesToLane(in []byte, offset uint64) uint64 {
 
 func Xorstates(a, b [25]uint64) [25]uint64 {
 	var result [25]uint64
-	for i := range result {
+	for i := range a {
 		result[i] ^= a[i] ^ b[i]
+	}
+	return result
+}
+
+func XorBytes(a, b []byte) []byte {
+	result := make([]byte, len(a))
+	for i := range a {
+		result[i] = a[i] ^ b[i]
 	}
 	return result
 }

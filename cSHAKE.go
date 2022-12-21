@@ -1,9 +1,14 @@
 package main
 
-func encodeString(S []byte) []byte { return append(lrEncode(uint64(len(S)*8), false), S...) }
+import "unicode/utf8"
+
+func encodeString(S []byte) []byte {
+	return append(lrEncode(uint64(len(S)*8), false), S...)
+}
 
 func bytepad(X []byte, w uint64) []byte {
 
+	utf8.ValidString(s)
 	enc_w := lrEncode(w, false)
 	// w * ((enc_w.length + X.length + w - 1) / w) = smallest multiple of w and z.length
 	z := make([]byte, w*((uint64(len(enc_w)+len(X))+w-1)/w))

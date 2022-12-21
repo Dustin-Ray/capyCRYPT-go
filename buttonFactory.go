@@ -1,6 +1,8 @@
 package main
 
-import "github.com/gotk3/gotk3/gtk"
+import (
+	"github.com/gotk3/gotk3/gtk"
+)
 
 //A factory that produces the buttons and corresponding signals to be used in the view.
 
@@ -25,11 +27,29 @@ func setupButtons(ctx *WindowCtx) {
 		ctx.updateStatus("SHA3 hash computed successfully")
 	}) //etc....
 
-	buttonList[1].SetTooltipMarkup("Computes a keyed hash of the notepad. The resulting hash can only be computed by a party who has knowledge of the password and the message.")
+	buttonList[1].SetTooltipMarkup("Computes a keyed hash of the notepad. The resulting hash can only be computed parties with knowledge of the password and the message.")
 	buttonList[1].Connect("clicked", func() {
 		password := showPasswordDialog(ctx.win, "authentication")
 		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
 		ctx.notePad.SetText(ComputeTaggedHash(password, []byte(text), "T"))
+		ctx.updateStatus("Message tag computed successfully")
+	}) //etc....
+
+	buttonList[2].SetTooltipMarkup("Encrypts data under a passphrase. Can only be decrypted by parties with knowledge of the passphrase.")
+	buttonList[2].Connect("clicked", func() {
+
+		password := showPasswordDialog(ctx.win, "encryption")
+		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+		ctx.notePad.SetText(encryptPW(string(password), text))
+		ctx.updateStatus("Message tag computed successfully")
+	}) //etc....
+
+	buttonList[3].SetTooltipMarkup("Decrypts data under a passphrase. Can only be decrypted by parties with knowledge of the passphrase.")
+	buttonList[3].Connect("clicked", func() {
+
+		password := showPasswordDialog(ctx.win, "encryption")
+		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+		ctx.notePad.SetText(decryptPW(string(password), text))
 		ctx.updateStatus("Message tag computed successfully")
 	}) //etc....
 
