@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 )
 
 func SHAKE(N *[]byte, d int) []byte {
@@ -56,7 +55,8 @@ func ComputeSHA3HASH(data string, fileMode bool) string {
 	}
 }
 
-func encryptPW(pw string, message string) string {
+// if this doesnt work it might be because of how gtk is getting text from dialog entry
+func encryptPW(pw, message []byte) []byte {
 
 	z := generateRandomBytes(64)
 	K := []byte(pw)
@@ -64,40 +64,32 @@ func encryptPW(pw string, message string) string {
 	ke := ke_ka[:64]
 	ka := ke_ka[64:]
 	pW := KMACXOF256(ke, []byte(""), len([]byte(message))*8, "SKE")
-	fmt.Println(hex.EncodeToString(pW))
+
 	c := XorBytes(pW, []byte(message))
-	fmt.Println(hex.EncodeToString(c))
 	t := KMACXOF256(ka, []byte(message), 512, "SKA")
 
-	return hex.EncodeToString(append(z, append(c, t...)...))
+	result := append(z, append(c, t...)...)
+	return result
 }
 
-func decryptPW(pw string, message string) string {
+func decryptPW(pw, message string) string {
 
 	// var Replacer = strings.NewReplacer("\r\n", "")
-
+	//need to convert from hex string to bytes
 	msg, _ := HexToBytes(message)
-
 	K := []byte(pw)
 
 	z := msg[:64]
 	c := msg[64 : len(msg)-64]
-	fmt.Println(hex.EncodeToString(c))
 	t := msg[len(msg)-64:]
 
 	ke_ka := KMACXOF256(append(z, K...), []byte{}, 1024, "S")
 	ke := ke_ka[:64]
 	ka := ke_ka[64:]
 	pW := KMACXOF256(ke, []byte(""), len(c)*8, "SKE")
-	fmt.Println(hex.EncodeToString(pW))
+
 	m := XorBytes(pW, c)
-
 	tP := KMACXOF256(ka, m, 512, "SKA")
-
-	// fmt.Println("z: ", BytesToHexString(z))
-	// fmt.Println("c: ", BytesToHexString(c))
-	// fmt.Println("t: ", BytesToHexString(tP))
-
 	if bytes.Equal(t, tP) {
 		return string(m[:])
 	} else {

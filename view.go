@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -133,6 +132,7 @@ func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
 			textView.SetProperty("editable", true)
 		}
 	})
+
 	textView.SetBuffer(buf)
 	scrollableTextArea.Add(textView)
 	scrollableTextArea.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -212,67 +212,4 @@ func setupLabels(ctx *WindowCtx) {
 	ctx.fixed.Put(notePadLabel, 245, 50)
 	ctx.fixed.Put(keysLabel, 710, 50)
 
-}
-
-// A dialog that exports key data to a file
-func saveDialog(ctx *WindowCtx, name string) {
-	// Create a dialog that allows the user to save a file
-	dialog, err := gtk.FileChooserDialogNewWith2Buttons("Save File", ctx.win,
-		gtk.FILE_CHOOSER_ACTION_SAVE,
-		"Cancel", gtk.RESPONSE_CANCEL,
-		"Save", gtk.RESPONSE_ACCEPT)
-	if err != nil {
-		panic(err)
-	}
-
-	// Show the dialog and wait for the user to respond
-	response := dialog.Run()
-	if response == gtk.RESPONSE_ACCEPT {
-		// Get the filename from the dialog
-		filename := dialog.GetFilename()
-		jsonKeyData, _ := KeyToJSON(ctx.loadedKey)
-
-		// Create the file
-		file, err := os.Create(filename)
-		if err != nil {
-			ctx.updateStatus("Failed to create file")
-			dialog.Destroy()
-		}
-		defer file.Close()
-		file.Write(jsonKeyData)
-		if err != nil {
-			ctx.updateStatus("Failed to write key")
-			dialog.Destroy()
-		}
-		ctx.updateStatus("Key data saved to: " + filename)
-	}
-	dialog.Destroy()
-}
-
-// A dialog that opens a key file. Handles any error in parsing file to key
-func openDialog(ctx *WindowCtx) {
-
-	// Create a new FileChooserDialog to open a file
-	fileDialog, err := gtk.FileChooserDialogNewWith2Buttons("Open File", ctx.win,
-		gtk.FILE_CHOOSER_ACTION_OPEN,
-		"_Cancel", gtk.RESPONSE_CANCEL,
-		"_Open", gtk.RESPONSE_ACCEPT)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fileDialog.SetSizeRequest(200, 100)
-
-	// Show the dialog and wait for the user's response.
-	response := fileDialog.Run()
-	if response == gtk.RESPONSE_ACCEPT {
-		// If a file was selected, print out the name
-		filename := fileDialog.GetFilename()
-		err := ctx.keytable.JsonToKey(ctx, filename)
-		if err != nil {
-			ctx.updateStatus("Import failed - invalid key selected")
-		}
-	}
-	// Destroy the dialog when done
-	fileDialog.Destroy()
 }

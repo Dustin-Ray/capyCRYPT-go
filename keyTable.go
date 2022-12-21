@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -120,6 +122,8 @@ func setupKeyTable(ctx *WindowCtx) {
 	newTreeView.SetModel(ctx.keytable.store.ToTreeModel())
 	newTreeView.SetGridLines(gtk.TREE_VIEW_GRID_LINES_BOTH)
 	newTreeView.SetActivateOnSingleClick(true)
+	newTreeView.SetHoverSelection(true)
+
 	newTreeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) {
 		// Get the list store
 		liststore, _ := tv.GetModel()
@@ -132,5 +136,37 @@ func setupKeyTable(ctx *WindowCtx) {
 		var lookupKey = ctx.keytable.keyList[idVal]
 		ctx.loadedKey = &lookupKey
 		ctx.updateStatus("key " + ctx.loadedKey.Id + " selected")
+
 	})
+	newTreeView.Connect("button-press-event", func(tv *gtk.TreeView, event *gdk.Event) {
+		// Get the list store
+		liststore, err := tv.GetModel()
+		if err != nil {
+			fmt.Println("liststore: ")
+			fmt.Println(err)
+		}
+		sel, err := tv.GetSelection()
+		_, iter, ok := sel.GetSelected()
+		if !ok {
+			fmt.Println("iter: ")
+			fmt.Println(err)
+		}
+
+		// Get the value from the list store
+		id, err := liststore.ToTreeModel().GetValue(iter, 0)
+		if err != nil {
+			fmt.Println("id: ")
+			fmt.Println(err)
+		}
+		idVal, err := id.GetString()
+		if err != nil {
+			fmt.Println("idval: ")
+			fmt.Println(err)
+		}
+		var lookupKey = ctx.keytable.keyList[idVal]
+		ctx.loadedKey = &lookupKey
+		ctx.updateStatus("key " + ctx.loadedKey.Id + " selected")
+
+	})
+	rightCLickMenu(ctx)
 }
