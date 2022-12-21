@@ -30,44 +30,6 @@ func SpongeSqueeze(S *[25]uint64, bitLength, rate int) []byte {
 	return StateToByteArray(&out, bitLength/8)[:bitLength/8] //FIPS 202 3.1
 }
 
-func BytesToStates(in []byte, rateInBytes int) [][25]uint64 {
-	stateArray := make([][25]uint64, (len(in) / rateInBytes)) //must accommodate enough states for datalength (in bytes) / rate
-	offset := uint64(0)
-	for i := 0; i < len(stateArray); i++ { //iterate through each state in stateArray
-		var state [25]uint64                      // init empty state
-		for j := 0; j < (rateInBytes*8)/64; j++ { //fill each state with rate # of bits
-			state[j] = BytesToLane(in, offset)
-			offset += 8
-		}
-		stateArray[i] = state
-	}
-	return stateArray
-}
-
-func BytesToLane(in []byte, offset uint64) uint64 {
-	lane := uint64(0)
-	for i := uint64(0); i < uint64(8); i++ {
-		lane += uint64(in[i+offset]&0xFF) << (8 * i) //mask shifted byte to long and add to lane
-	}
-	return lane
-}
-
-func Xorstates(a, b [25]uint64) [25]uint64 {
-	var result [25]uint64
-	for i := range a {
-		result[i] ^= a[i] ^ b[i]
-	}
-	return result
-}
-
-func XorBytes(a, b []byte) []byte {
-	result := make([]byte, len(a))
-	for i := range a {
-		result[i] = a[i] ^ b[i]
-	}
-	return result
-}
-
 func padTenOne(X []byte, rateInBytes int) []byte {
 	q := rateInBytes - len(X)%rateInBytes
 	padded := make([]byte, len(X)+q)

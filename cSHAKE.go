@@ -1,54 +1,29 @@
 package main
 
-import "unicode/utf8"
+import "encoding/binary"
 
 func encodeString(S []byte) []byte {
-	return append(lrEncode(uint64(len(S)*8), false), S...)
+	return append(leftEncode(uint64(len(S)*8)), S...)
 }
 
-func bytepad(X []byte, w uint64) []byte {
-
-	utf8.ValidString(s)
-	enc_w := lrEncode(w, false)
-	// w * ((enc_w.length + X.length + w - 1) / w) = smallest multiple of w and z.length
-	z := make([]byte, w*((uint64(len(enc_w)+len(X))+w-1)/w))
-	copy(z, enc_w)
-	copy(z[len(enc_w):], X)
-	return z
-
+func bytepad(input []byte, w int) []byte {
+	// leftEncode always returns max 9 bytes
+	buf := make([]byte, 0, 9+len(input)+w)
+	buf = append(buf, leftEncode(uint64(w))...)
+	buf = append(buf, input...)
+	padlen := w - (len(buf) % w)
+	return append(buf, make([]byte, padlen)...)
 }
 
-func lrEncode(X uint64, dir bool) []byte {
-
-	emptyX := make([]byte, 2)
-
-	if X == 0 && dir {
-		emptyX[0] = 0
-		emptyX[1] = 1
-		return emptyX
-	} else if X == 0 && !dir {
-		emptyX[0] = 1
-		emptyX[1] = 0
-		return emptyX
+func leftEncode(value uint64) []byte {
+	var b [9]byte
+	binary.BigEndian.PutUint64(b[1:], value)
+	// Trim all but last leading zero bytes
+	i := byte(1)
+	for i < 8 && b[i] == 0 {
+		i++
 	}
-
-	temp := make([]byte, 255)
-	length := X
-	count := 0
-
-	for length > 0 {
-		b := byte(length & 0xff)
-		length = length >> 8
-		temp[245-count] = b
-		count++
-	}
-
-	result := make([]byte, count+1)
-	copy(result, temp[255-count:])
-	if dir {
-		result[len(result)-1] = byte(count)
-	} else {
-		result[0] = byte(count)
-	}
-	return result
+	// Prepend number of encoded bytes
+	b[i-1] = 9 - i
+	return b[i-1:]
 }

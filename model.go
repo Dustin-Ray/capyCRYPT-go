@@ -39,7 +39,7 @@ func cSHAKE256(X []byte, L int, N string, S string) []byte {
 }
 
 func KMACXOF256(K []byte, X []byte, L int, S string) []byte {
-	newX := append(append(bytepad(encodeString(K), 136), X...), lrEncode(0, true)...)
+	newX := append(append(bytepad(encodeString(K), 136), X...), leftEncode(0)...)
 	return cSHAKE256(newX, L, "KMAC", S)
 }
 
@@ -58,7 +58,7 @@ func ComputeSHA3HASH(data string, fileMode bool) string {
 
 func encryptPW(pw string, message string) string {
 
-	z := generateRandomBytes()
+	z := generateRandomBytes(64)
 	K := []byte(pw)
 	ke_ka := KMACXOF256(append(z, K...), []byte{}, 1024, "S")
 	ke := ke_ka[:64]

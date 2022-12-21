@@ -5,10 +5,12 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/lukechampine/fastxor"
 )
 
-func generateRandomBytes() []byte {
-	b := make([]byte, 64)
+func generateRandomBytes(size int) []byte {
+	b := make([]byte, size)
 	_, err := rand.Read(b)
 	if err != nil {
 		fmt.Println("error:", err)
@@ -42,4 +44,41 @@ func StateToByteArray(uint64s *[]uint64, bitLength int) []byte {
 
 func HexToBytes(hexString string) ([]byte, error) {
 	return hex.DecodeString(hexString)
+}
+
+func BytesToStates(in []byte, rateInBytes int) [][25]uint64 {
+	stateArray := make([][25]uint64, (len(in) / rateInBytes)) //must accommodate enough states for datalength (in bytes) / rate
+	offset := uint64(0)
+	for i := 0; i < len(stateArray); i++ { //iterate through each state in stateArray
+		var state [25]uint64                      // init empty state
+		for j := 0; j < (rateInBytes*8)/64; j++ { //fill each state with rate # of bits
+			state[j] = BytesToLane(in, offset)
+			offset += 8
+		}
+		stateArray[i] = state
+	}
+	return stateArray
+}
+
+func BytesToLane(in []byte, offset uint64) uint64 {
+	lane := uint64(0)
+	for i := uint64(0); i < uint64(8); i++ {
+		lane += uint64(in[i+offset]&0xFF) << (8 * i) //mask shifted byte to long and add to lane
+	}
+	return lane
+}
+
+func Xorstates(a, b [25]uint64) [25]uint64 {
+
+	var result [25]uint64
+	for i := range a {
+		result[i] ^= a[i] ^ b[i]
+	}
+	return result
+}
+
+func XorBytes(a, b []byte) []byte {
+	dst := make([]byte, len(a))
+	fastxor.Bytes(dst, a, b)
+	return dst
 }
