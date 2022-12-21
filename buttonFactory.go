@@ -53,6 +53,13 @@ func setupButtons(ctx *WindowCtx) {
 		ctx.updateStatus("Message tag computed successfully")
 	}) //etc....
 
+	buttonList[4].SetTooltipMarkup("Generates a Schnorr E521 keypair from supplied password.")
+	buttonList[4].Connect("clicked", func() {
+		key := KeyObj{}
+		generateKeyPair(ctx, &key)
+		ctx.keytable.importKey(ctx, key)
+	}) //etc....
+
 	reset, _ := gtk.ButtonNewWithLabel("Reset")
 	reset.SetName("resetButton") //for CSS styling
 	reset.Connect("button-press-event", func() {

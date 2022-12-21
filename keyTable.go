@@ -103,7 +103,7 @@ func setupKeyTable(ctx *WindowCtx) {
 
 	newScrollableTreeList, _ := gtk.ScrolledWindowNew(nil, nil)
 	newScrollableTreeList.SetVExpand(true)
-	newScrollableTreeList.SetSizeRequest(255, 450)
+	newScrollableTreeList.SetSizeRequest(295, 450)
 
 	newGrid.Attach(newScrollableTreeList, 0, 0, 8, 10)
 	newScrollableTreeList.Add(newTreeView)

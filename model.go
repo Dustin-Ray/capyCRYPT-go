@@ -105,3 +105,13 @@ func decryptPW(pw string, message string) string {
 	}
 
 }
+
+/**
+ * Generates a (Schnorr/ECDHIES) key pair from passphrase pw:
+ *  s <- KMACXOF256(pw, “”, 512, “K”); s <- 4s
+ *  V <- s*G
+ *  key pair: (s, V)
+ */
+func generateKeyPair(ctx *WindowCtx, key *KeyObj) {
+	constructKey(ctx.win, key)
+}

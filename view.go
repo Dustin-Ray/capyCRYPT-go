@@ -18,13 +18,13 @@ The style of the window is set by style.css.
 type WindowCtx struct {
 	win          *gtk.Window     // Main window containing fixed container
 	fixed        *gtk.Fixed      // Fixed allows for precise arbitrary placement of widgets
-	loadedFile   *os.File        // Represents any file currently pointed to
+	loadedFile   *os.File        // Represents the selected file either dropped in window or selected from chooser
 	notePad      *gtk.TextBuffer // The text area where input and output is processed
-	initialState bool            // Signals if window has is waiting for user input
+	initialState bool            // Signals if window is waiting for user input
 	status       *gtk.Label      // Outputs operation status and error messages
 	keytable     *KeyTable       // A table storing all imported keys
-	loadedKey    *KeyObj         // The key to be used for any asymetric encryptions
-	fileMode     bool            //Determines whether to process a loaded file or notepad text
+	loadedKey    *KeyObj         // The key to be used for any asymmetric encryptions
+	fileMode     bool            // Determines whether to process a loaded file or notepad text
 }
 
 // Entry point
@@ -77,7 +77,7 @@ func (w *WindowCtx) updateStatus(message string) { w.status.SetText("Status: " +
 // Overrides layouts to provide direct placement of widgets
 func newFixed() *gtk.Fixed {
 	fixed, _ := gtk.FixedNew()
-	fixed.SetSizeRequest(1000, 590)
+	fixed.SetSizeRequest(1050, 590)
 	return fixed
 }
 
