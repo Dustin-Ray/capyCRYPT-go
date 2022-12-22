@@ -142,17 +142,6 @@ func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
 	return buf
 }
 
-// Resets context to initial state
-func (ctx *WindowCtx) Reset() {
-	ctx.notePad = nil
-	ctx.initialState = true
-	ctx.loadedFile = nil
-	ctx.notePad = createScrollableTextArea(ctx)
-	setupKeyTable(ctx)
-	ctx.status.SetText("Status: Ready")
-	ctx.win.ShowAll()
-}
-
 // Adds file menu bar to window.
 func setupMenuBar(ctx *WindowCtx) {
 
@@ -173,16 +162,8 @@ func setupMenuBar(ctx *WindowCtx) {
 	exit, _ := gtk.MenuItemNewWithLabel("Exit")
 
 	//setup import and export funtionality
-	keysImport.Connect("activate", func() { openDialog(ctx) })
-	keysExport.Connect("activate", func() {
-		if ctx.loadedKey != nil {
-			KeyToJSON(ctx.loadedKey)
-			saveDialog(ctx, "Save File")
-		} else {
-			ctx.updateStatus("Export failed - no key selected")
-		}
-
-	})
+	keysImport.Connect("activate", func() { importKeyDialog(ctx) })
+	keysExport.Connect("activate", func() { exportKey(ctx) })
 
 	keysDropDown.Append(keysImport)
 	keysDropDown.Append(keysExport)

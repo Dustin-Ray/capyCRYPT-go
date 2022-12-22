@@ -1,5 +1,11 @@
 package main
 
+/*
+Contains auxilliary functions. Intended to reduce size
+and increase readability of other files within package
+and reduce GUI bloat.
+*/
+
 import (
 	"crypto/rand"
 	"encoding/binary"
@@ -78,7 +84,6 @@ func BytesToLane(in []byte, offset uint64) uint64 {
 
 // returns a XOR b, assumes equal size
 func Xorstates(a, b [25]uint64) [25]uint64 {
-
 	var result [25]uint64
 	for i := range a {
 		result[i] ^= a[i] ^ b[i]
@@ -93,6 +98,7 @@ func XorBytes(a, b []byte) []byte {
 	return dst
 }
 
+// Called to generate a key from collected user input
 func setKeyData(key *KeyObj, password2 string, owner string) {
 	s := new(big.Int).SetBytes(KMACXOF256([]byte(password2), []byte{}, 512, "K"))
 	V := *GenPoint()
@@ -119,6 +125,7 @@ func changed(pwd, confirm *gtk.Entry, matched *bool, okBtn *gtk.Button) {
 	}
 }
 
+// Generates a scrollable text area for displaying large amounts of text
 func getScrollableTextArea(ctx *WindowCtx, textForBuffer string) gtk.ScrolledWindow {
 
 	scrollableTextArea, _ := gtk.ScrolledWindowNew(nil, nil)
@@ -131,4 +138,27 @@ func getScrollableTextArea(ctx *WindowCtx, textForBuffer string) gtk.ScrolledWin
 	scrollableTextArea.SetSizeRequest(200, 100)
 	buf.SetText(textForBuffer)
 	return *scrollableTextArea
+}
+
+// Exports selected or loaded key to file
+func exportKey(ctx *WindowCtx) {
+	if ctx.loadedKey != nil {
+		KeyToJSON(ctx.loadedKey)
+		exportKeyDialog(ctx, "Save File")
+	} else {
+		ctx.updateStatus("Export failed - no key selected")
+	}
+
+}
+
+// Resets context to initial state
+func (ctx *WindowCtx) Reset() {
+	ctx.notePad = nil
+	ctx.initialState = true
+	ctx.loadedFile = nil
+	ctx.loadedKey = nil
+	ctx.notePad = createScrollableTextArea(ctx)
+	setupKeyTable(ctx)
+	ctx.status.SetText("Status: Ready")
+	ctx.win.ShowAll()
 }

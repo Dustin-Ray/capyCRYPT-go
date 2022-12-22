@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/gotk3/gotk3/pango"
 )
 
 /*
@@ -138,12 +140,16 @@ func rightCLickMenu(ctx *WindowCtx) {
 	// Create a Menu to display when right-clicking a row.
 	menu, _ := gtk.MenuNew()
 	// Create a MenuItem to be used in our Menu.
-	menuItem, _ := gtk.MenuItemNewWithLabel("Details")
+	details, _ := gtk.MenuItemNewWithLabel("Details...")
+	export, _ := gtk.MenuItemNewWithLabel("Export...")
+
 	// Add the MenuItem to the Menu.
-	menu.Append(menuItem)
+	menu.Append(details)
+	menu.Append(export)
 
 	// Connect a signal handler to the MenuItem's "activate" signal.
-	menuItem.Connect("activate", func() { showKeyDetails(ctx) })
+	details.Connect("activate", func() { showKeyDetails(ctx) })
+	export.Connect("activate", func() { exportKey(ctx) })
 	menu.ShowAll()
 	// Connect the "button-press-event" signal to our handler.
 	ctx.keytable.treeview.Connect("button-press-event", func(treeView *gtk.TreeView, event *gdk.Event) {
@@ -205,15 +211,21 @@ func showKeyDetails(ctx *WindowCtx) {
 }
 
 // A dialog that exports key data to a file
-func saveDialog(ctx *WindowCtx, name string) {
+func exportKeyDialog(ctx *WindowCtx, name string) {
 	// Create a dialog that allows the user to save a file
-	dialog, err := gtk.FileChooserDialogNewWith2Buttons("Save File", ctx.win,
+	dialog, err := gtk.FileChooserDialogNewWith2Buttons("Export Key", ctx.win,
 		gtk.FILE_CHOOSER_ACTION_SAVE,
 		"Cancel", gtk.RESPONSE_CANCEL,
 		"Save", gtk.RESPONSE_ACCEPT)
 	if err != nil {
 		panic(err)
 	}
+
+	//enforce SOAP file format
+	filter, _ := gtk.FileFilterNew()
+	dialog.SetCurrentName(ctx.loadedKey.Id + ".SOAP_KEY")
+	filter.AddPattern("*.SOAP_KEY")
+	dialog.SetFilter(filter)
 
 	// Show the dialog and wait for the user to respond
 	response := dialog.Run()
@@ -234,16 +246,20 @@ func saveDialog(ctx *WindowCtx, name string) {
 			ctx.updateStatus("Failed to write key")
 			dialog.Destroy()
 		}
-		ctx.updateStatus("Key data saved to: " + filename)
+
+		ctx.status.SetLineWrapMode(pango.WRAP_CHAR)
+		reg := regexp.MustCompile(`\/[^\/]*\.SOAP_KEY$`)
+		filePath := reg.ReplaceAllString(filename, "")
+		ctx.updateStatus("Key data saved to: " + filePath)
 	}
 	dialog.Destroy()
 }
 
 // A dialog that opens a key file. Handles any error in parsing file to key
-func openDialog(ctx *WindowCtx) {
+func importKeyDialog(ctx *WindowCtx) {
 
 	// Create a new FileChooserDialog to open a file
-	fileDialog, err := gtk.FileChooserDialogNewWith2Buttons("Open File", ctx.win,
+	fileDialog, err := gtk.FileChooserDialogNewWith2Buttons("Import Key", ctx.win,
 		gtk.FILE_CHOOSER_ACTION_OPEN,
 		"_Cancel", gtk.RESPONSE_CANCEL,
 		"_Open", gtk.RESPONSE_ACCEPT)
@@ -251,6 +267,12 @@ func openDialog(ctx *WindowCtx) {
 		fmt.Println(err)
 		return
 	}
+
+	//enforce SOAP file format
+	filter, _ := gtk.FileFilterNew()
+	filter.AddPattern("*.SOAP_KEY")
+	fileDialog.SetFilter(filter)
+
 	fileDialog.SetSizeRequest(200, 100)
 
 	// Show the dialog and wait for the user's response.
@@ -265,4 +287,22 @@ func openDialog(ctx *WindowCtx) {
 	}
 	// Destroy the dialog when done
 	fileDialog.Destroy()
+}
+
+// Displays a warning dialog when the reset button is pressed
+func showWarningDialog(ctx *WindowCtx) {
+	dialog := gtk.MessageDialogNew(ctx.win,
+		gtk.DIALOG_MODAL,
+		gtk.MESSAGE_WARNING,
+		gtk.BUTTONS_OK_CANCEL,
+		"Resetting clears all data and keys from this session. Exported keys are unaffected. Continue?")
+
+	dialog.SetTitle("Danger Zone!")
+	response := dialog.Run()
+	if response == gtk.RESPONSE_OK {
+		ctx.Reset()
+		dialog.Destroy()
+	} else {
+		dialog.Destroy()
+	}
 }
