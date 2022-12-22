@@ -49,7 +49,7 @@ func setupButtons(ctx *WindowCtx) {
 
 		password := showPasswordDialog(ctx.win, "encryption")
 		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-		ctx.notePad.SetText(decryptPW(string(password), text))
+		ctx.notePad.SetText(string(decryptPW(password, HexToBytes(text))))
 		ctx.updateStatus("Decryption successful")
 	}) //etc....
 

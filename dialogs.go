@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -131,32 +132,21 @@ func constructKey(parent *gtk.Window, key *KeyObj) {
 	confirm, _ := gtk.EntryNew()
 	confirm.SetVisibility(false)
 
-	ownerField, _ := owner.GetText()
-	password1, _ := pwd.GetText()
-	password2, _ := confirm.GetText()
-
 	hBox1.Add(owner)
 	hBox2.Add(pwd)
 	hBox3.Add(confirm)
 
-	key.Id = BytesToHexString(generateRandomBytes(6))
+	key.Id = hex.EncodeToString(generateRandomBytes(6))
 	key.Owner = "NONE"
 	key.KeyType = "PRIVATE"
 
 	confirm.Connect("changed", func() {
 		// Get the entered password
-		password1, _ = pwd.GetText()
-		password2, _ = confirm.GetText()
+		password1, _ := pwd.GetText()
+		password2, _ := confirm.GetText()
+		ot, _ := owner.GetText()
 		if password2 == password1 {
-			s := new(big.Int).SetBytes(KMACXOF256([]byte(password2), []byte{}, 512, "K"))
-			V := *GenPoint()
-			V = *V.SecMul(s)
-			key.Owner, _ = owner.GetText()
-			key.PrivKey = password2
-			key.PubKeyX = V.x.String()
-			key.PubKeyY = V.y.String()
-			key.DateCreated = time.Now().Format(time.RFC1123)
-			key.Signature = "test"
+			setKeyData(key, password2, ot)
 			okButton.SetSensitive(true)
 		} else {
 			okButton.SetSensitive(false)
@@ -165,36 +155,31 @@ func constructKey(parent *gtk.Window, key *KeyObj) {
 
 	pwd.Connect("changed", func() {
 		// Get the entered password
-		password1, _ = pwd.GetText()
-		password2, _ = confirm.GetText()
+		password1, _ := pwd.GetText()
+		password2, _ := confirm.GetText()
+		ot, _ := owner.GetText()
 		if password2 == password1 {
-			key.Id = "0000"
-			key.Owner = ownerField
-			key.KeyType = "PRIVATE"
-			key.PrivKey = password2
-
-			key.DateCreated = time.Now().Format(time.RFC1123)
-
+			setKeyData(key, password2, ot)
 			okButton.SetSensitive(true)
 		} else {
 			okButton.SetSensitive(false)
 		}
 	})
-
-	// Show the dialog
 	dialog.ShowAll()
 	dialog.Run()
-
-	// Hide the dialog
 	dialog.Hide()
-
 }
 
-func modByte(value byte, r int) byte {
-	if value >= byte(r) {
-		return value % byte(r)
-	}
-	return value
+func setKeyData(key *KeyObj, password2 string, owner string) {
+	s := new(big.Int).SetBytes(KMACXOF256([]byte(password2), []byte{}, 512, "K"))
+	V := *GenPoint()
+	V = *V.SecMul(s)
+	key.Owner = owner
+	key.PrivKey = password2
+	key.PubKeyX = V.x.String()
+	key.PubKeyY = V.y.String()
+	key.DateCreated = time.Now().Format(time.RFC1123)
+	key.Signature = "test"
 }
 
 func rightCLickMenu(ctx *WindowCtx) {

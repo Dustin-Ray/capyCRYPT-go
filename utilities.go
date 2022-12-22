@@ -13,12 +13,7 @@ import (
 // to be cryptographically secure.
 func generateRandomBytes(size int) []byte {
 	b := make([]byte, size)
-	_, err := rand.Read(b)
-	if err != nil {
-		fmt.Println("error:", err)
-		return nil
-	}
-
+	rand.Read(b)
 	return b
 }
 
@@ -48,8 +43,9 @@ func StateToByteArray(uint64s *[]uint64, bitLength int) []byte {
 }
 
 // Converts a string of hex characters to a byte array.
-func HexToBytes(hexString string) ([]byte, error) {
-	return hex.DecodeString(hexString)
+func HexToBytes(hexString string) []byte {
+	result, _ := hex.DecodeString(hexString)
+	return result
 }
 
 // Main entry point for file and text processing. Converts byte array to

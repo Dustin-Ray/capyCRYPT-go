@@ -30,15 +30,14 @@ func cSHAKE256(X []byte, L int, N string, S string) []byte {
 	if N == "" && S == "" {
 		return SHAKE256(X, L)
 	}
-	str := []byte(S)
-	out := bytepad(append(encodeString([]byte(N)), encodeString(str)...), 136)
+	out := bytepad(append(encodeString([]byte(N)), encodeString([]byte(S))...), 136)
 	out = append(out, X...)
 	out = append(out, []byte{0x04}...) // https://keccak.team/keccak_specs_summary.html
 	return SpongeSqueeze(SpongeAbsorb(&out, 512), L, 1600-512)
 }
 
 func KMACXOF256(K []byte, X []byte, L int, S string) []byte {
-	newX := append(append(bytepad(encodeString(K), 136), X...), leftEncode(0)...)
+	newX := append(append(bytepad(encodeString(K), 136), X...), rightEncode(0)...)
 	return cSHAKE256(newX, L, "KMAC", S)
 }
 
@@ -55,47 +54,38 @@ func ComputeSHA3HASH(data string, fileMode bool) string {
 	}
 }
 
-// if this doesnt work it might be because of how gtk is getting text from dialog entry
 func encryptPW(pw, message []byte) []byte {
 
 	z := generateRandomBytes(64)
-	K := []byte(pw)
-	ke_ka := KMACXOF256(append(z, K...), []byte{}, 1024, "S")
+	ke_ka := KMACXOF256(append(z, []byte(pw)...), []byte{}, 1024, "S")
 	ke := ke_ka[:64]
 	ka := ke_ka[64:]
-	pW := KMACXOF256(ke, []byte(""), len([]byte(message))*8, "SKE")
-
-	c := XorBytes(pW, []byte(message))
-	t := KMACXOF256(ka, []byte(message), 512, "SKA")
-
+	pW := KMACXOF256(ke, []byte{}, len(message)*8, "SKE")
+	c := XorBytes(pW, message)
+	t := KMACXOF256(ka, message, 512, "SKA")
 	result := append(z, append(c, t...)...)
 	return result
 }
 
-func decryptPW(pw, message string) string {
-
-	// var Replacer = strings.NewReplacer("\r\n", "")
-	//need to convert from hex string to bytes
-	msg, _ := HexToBytes(message)
-	K := []byte(pw)
+func decryptPW(pw, msg []byte) []byte {
 
 	z := msg[:64]
 	c := msg[64 : len(msg)-64]
+	cP := make([]byte, len(msg)-128)
+	copy(cP, c)
 	t := msg[len(msg)-64:]
-
-	ke_ka := KMACXOF256(append(z, K...), []byte{}, 1024, "S")
+	ke_ka := KMACXOF256(append(z, pw...), []byte{}, 1024, "S")
 	ke := ke_ka[:64]
 	ka := ke_ka[64:]
-	pW := KMACXOF256(ke, []byte(""), len(c)*8, "SKE")
 
-	m := XorBytes(pW, c)
+	pW := KMACXOF256(ke, []byte{}, len(c)*8, "SKE")
+	m := XorBytes(cP, pW)
 	tP := KMACXOF256(ka, m, 512, "SKA")
 	if bytes.Equal(t, tP) {
-		return string(m[:])
+		return m
 	} else {
-		return string(m[:])
+		return m
 	}
-
 }
 
 /**
