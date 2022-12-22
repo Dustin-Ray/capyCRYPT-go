@@ -67,7 +67,7 @@ func passwordEntryDialog(parent *gtk.Window, message string) (string, bool) {
 	return "", false
 }
 
-func constructKey(parent *gtk.Window, key *KeyObj) bool {
+func constructKey(ctx *WindowCtx, key *KeyObj) bool {
 
 	// Create a dialog
 	dialog, _ := gtk.DialogNew()
@@ -290,12 +290,14 @@ func importKeyDialog(ctx *WindowCtx) {
 }
 
 // Displays a warning dialog when the reset button is pressed
-func showWarningDialog(ctx *WindowCtx) {
+func showRestWarningDialog(ctx *WindowCtx) {
 	dialog := gtk.MessageDialogNew(ctx.win,
 		gtk.DIALOG_MODAL,
 		gtk.MESSAGE_WARNING,
 		gtk.BUTTONS_OK_CANCEL,
-		"Resetting clears all data and keys from this session. Exported keys are unaffected. Continue?")
+		"Clears all data and keys from this session, "+
+			"cancels any running operations, "+
+			"and resets the notepad. Exported keys are unaffected.")
 
 	dialog.SetTitle("Danger Zone!")
 	response := dialog.Run()
@@ -305,4 +307,16 @@ func showWarningDialog(ctx *WindowCtx) {
 	} else {
 		dialog.Destroy()
 	}
+}
+
+func refreshWindow() {
+
+	for {
+		if gtk.EventsPending() {
+			gtk.MainIterationDo(false)
+		} else {
+			break
+		}
+	}
+
 }

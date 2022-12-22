@@ -15,15 +15,17 @@ Fixed holds all widgets so that they can be placed at precise pixels.
 The style of the window is set by style.css.
 */
 type WindowCtx struct {
-	win          *gtk.Window     // Main window containing fixed container
-	fixed        *gtk.Fixed      // Fixed allows for precise arbitrary placement of widgets
-	loadedFile   *os.File        // Represents the selected file either dropped in window or selected from chooser
-	notePad      *gtk.TextBuffer // The text area where input and output is processed
-	initialState bool            // Signals if window is waiting for user input
-	status       *gtk.Label      // Outputs operation status and error messages
-	keytable     *KeyTable       // A table storing all imported keys
-	loadedKey    *KeyObj         // The key to be used for any asymmetric encryptions
-	fileMode     bool            // Determines whether to process a loaded file or notepad text
+	win          *gtk.Window      // Main window containing fixed container
+	fixed        *gtk.Fixed       // Fixed allows for precise arbitrary placement of widgets
+	loadedFile   *os.File         // Represents the selected file either dropped in window or selected from chooser
+	notePad      *gtk.TextBuffer  // The text area where input and output is processed
+	initialState bool             // Signals if window is waiting for user input, can also be used to cancel running ops
+	status       *gtk.Label       // Outputs operation status and error messages
+	keytable     *KeyTable        // A table storing all imported keys
+	loadedKey    *KeyObj          // The key to be used for any asymmetric encryptions
+	fileMode     bool             // Determines whether to process a loaded file or notepad text
+	progressBar  *gtk.ProgressBar //A bar to display status of ongoing operations
+	buttons      *[]gtk.Button    //A list of pointers to all buttons added to the window
 }
 
 // Entry point
@@ -52,16 +54,16 @@ func initialize() *WindowCtx {
 	ctx.win.Add(ctx.fixed)
 
 	ctx.loadedFile = nil
-	ctx.notePad = createScrollableTextArea(&ctx)
+	ctx.notePad = setupNotepad(&ctx)
 
-	ctx.status, _ = gtk.LabelNew("")
-	ctx.status.SetText("Status: Ready")
-	ctx.fixed.Put(ctx.status, 245, 535)
+	ctx.status, _ = gtk.LabelNew("Status: Ready")
+	ctx.fixed.Put(ctx.status, 245, 540)
 
-	setupButtons(&ctx)
+	ctx.buttons = setupButtons(&ctx)
 	setupLabels(&ctx)
 	setupMenuBar(&ctx)
 	setupKeyTable(&ctx)
+	setupProgressBar(&ctx)
 
 	cssProvider, _ := gtk.CssProviderNew()
 	cssProvider.LoadFromPath("style.css")
@@ -85,28 +87,32 @@ func newFixed() *gtk.Fixed {
 func setupWindow() *gtk.Window {
 
 	win, _ := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
-	win.SetTitle("CryptoTool v 0.1")
+	win.SetTitle("SOAPTool v 0.1")
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
+	win.SetResizable(false)
 	win.SetPosition(gtk.WIN_POS_CENTER)
 	return win
 }
 
 /*
-Creates a scrollable text area to display input and output of operations. Contains
-drag and drop functionality for file operations.
-*/
-func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
+ * The notepad is the primary location of interaction for the application.
+ * A user can either enter text directly or they can drag and drop a file into the window
+ * to perform cryptographic operations on the data. If the user edits the file details, the
+ * session switches to text mode and any operations requested are performed over the notepad
+ * text. Any UTF-8 characters can be processed by the notepad, including emojis and other
+ * special symbols. The application is not tested on any language except english.
+ */
+func setupNotepad(ctxWin *WindowCtx) *gtk.TextBuffer {
 	scrollableTextArea, _ := gtk.ScrolledWindowNew(nil, nil)
 	buf, _ := gtk.TextBufferNew(nil)
 	textView, _ := gtk.TextViewNewWithBuffer(buf)
 	textView.SetName("textArea")
 	buf.SetText("Enter text or drag and drop file...")
-	// Connect the drag and drop area signals
+	// Drag and drop a file into the notepad to get the path and switch to file mode
 	textView.Connect("drag-data-received", func(ddarea *gtk.Box, ctx *gdk.DragContext, x int, y int, data *gtk.SelectionData, info uint, time uint32) {
 		ctxWin.initialState = false
-		ctxWin.fileMode = true
 		buf.SetText("")
 		var replacer = strings.NewReplacer("\r\n", "")
 		filePath := replacer.Replace(string(data.GetData()))
@@ -119,12 +125,13 @@ func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
 		} else {
 			ctxWin.loadedFile = file
 		}
-		textView.SetCanFocus(false)
-		textView.SetProperty("cursor-visible", false)
-		buf.SetText("Successfully loaded: ")
+		buf.SetText("Successfully loaded ")
 		ctxWin.updateStatus("Switched to file processing mode")
+
+		ctxWin.fileMode = true
 	})
 
+	//Clear initial message from notepad
 	textView.Connect("button-press-event", func() {
 		if ctxWin.initialState {
 			buf.SetText("")
@@ -133,6 +140,7 @@ func createScrollableTextArea(ctxWin *WindowCtx) *gtk.TextBuffer {
 		}
 	})
 
+	//connect buffer, set size and other properties
 	textView.SetBuffer(buf)
 	scrollableTextArea.Add(textView)
 	scrollableTextArea.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -192,5 +200,18 @@ func setupLabels(ctx *WindowCtx) {
 	ctx.fixed.Put(buttonsLabel, 40, 50)
 	ctx.fixed.Put(notePadLabel, 245, 50)
 	ctx.fixed.Put(keysLabel, 710, 50)
+
+}
+
+// Sets up a progress bar to display status of operations
+func setupProgressBar(ctx *WindowCtx) {
+
+	pb, err := gtk.ProgressBarNew()
+	if err != nil {
+		panic(err)
+	}
+	pb.SetSizeRequest(100, 40)
+
+	ctx.progressBar = pb
 
 }

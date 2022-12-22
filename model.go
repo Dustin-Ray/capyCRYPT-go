@@ -1,11 +1,26 @@
 package main
 
+/**
+ * Implements SHA3XOF functionality as defined in FIPS PUP 202 and NIST SP 800-105.
+ * Inspiration:
+ *      <a href="https://github.com/mjosaarinen/tiny_sha3">...</a>
+ *      <a href="https://keccak.team/keccak_specs_summary.html">...</a>
+ *      <a href="https://github.com/NWc0de/KeccakUtils">...</a>
+ * Dustin Ray
+ * version 0.1
+ */
+
 import (
 	"bytes"
 	"encoding/hex"
 	"errors"
 )
 
+/*
+* SHA3-Keccak functionaility ref NIST FIPS 202.
+* N: pointer to message to be hashed.
+* d: requested output length
+ */
 func SHAKE(N *[]byte, d int) []byte {
 	bytesToPad := 136 - len(*N)%136 // SHA3-256 r = 1088 / 8 = 136
 	if bytesToPad == 1 {
@@ -16,20 +31,18 @@ func SHAKE(N *[]byte, d int) []byte {
 	return SpongeSqueeze(SpongeAbsorb(N, 2*d), d, 1600-(2*d))
 }
 
-func SHAKE256(M []byte, d int) []byte {
-	message := make([]byte, len(M)+1)
-	copy(message, M)
-	if (136 - len(M)%136) == 1 {
-		message[len(M)] = 0x9f
-	} else {
-		message[len(M)] = 0x1f
-	}
-	return SpongeSqueeze(SpongeAbsorb(&message, d*2), d, 1600-(d*2))
-}
-
+/**
+ * FIPS 202 Section 3 cSHAKE function returns customizable and
+ * domain seperated length L SHA3XOF hash of input string.
+ * X: input message in bytes
+ * L: requested output length
+ * N: optional function name string
+ * S: option customization string
+ * return: SHA3XOF hash of length L of input message X
+ */
 func cSHAKE256(X []byte, L int, N string, S string) []byte {
 	if N == "" && S == "" {
-		return SHAKE256(X, L)
+		return SHAKE(&X, L)
 	}
 	out := bytepad(append(encodeString([]byte(N)), encodeString([]byte(S))...), 136)
 	out = append(out, X...)
@@ -37,6 +50,14 @@ func cSHAKE256(X []byte, L int, N string, S string) []byte {
 	return SpongeSqueeze(SpongeAbsorb(&out, 512), L, 1600-512)
 }
 
+/**
+ * Generates keyed hash for given input as specified in NIST SP 800-185 section 4.
+ * K: key
+ * X: byte-oriented message
+ * L: requested bit length
+ * S: customization string
+ * return: KMACXOF256 of X under K
+ */
 func KMACXOF256(K []byte, X []byte, L int, S string) []byte {
 	newX := append(append(bytepad(encodeString(K), 136), X...), rightEncode(0)...)
 	return cSHAKE256(newX, L, "KMAC", S)
@@ -65,7 +86,7 @@ func ComputeSHA3HASH(data string, fileMode bool) string {
 	if fileMode {
 		return ""
 	} else {
-		return BytesToHexString(SHAKE(&dataBytes, 512))
+		return hex.EncodeToString(SHAKE(&dataBytes, 512))
 	}
 }
 
@@ -79,15 +100,15 @@ func ComputeSHA3HASH(data string, fileMode bool) string {
  * message: message to encrypt
  * return: symmetric cryptogram: (z, c, t)
  */
-func encryptPW(pw, message []byte) []byte {
+func encryptPW(pw []byte, msg *[]byte) []byte {
 
 	z := generateRandomBytes(64)
 	ke_ka := KMACXOF256(append(z, []byte(pw)...), []byte{}, 1024, "S")
 	ke := ke_ka[:64]
 	ka := ke_ka[64:]
-	pW := KMACXOF256(ke, []byte{}, len(message)*8, "SKE")
-	c := XorBytes(pW, message)
-	t := KMACXOF256(ka, message, 512, "SKA")
+	pW := KMACXOF256(ke, []byte{}, len(*msg)*8, "SKE")
+	c := XorBytes(pW, *msg)
+	t := KMACXOF256(ka, *msg, 512, "SKA")
 	result := append(z, append(c, t...)...)
 	return result
 }
@@ -119,7 +140,7 @@ func decryptPW(pw, msg []byte) ([]byte, error) {
 	if bytes.Equal(t, tP) {
 		return m, nil
 	} else {
-		return nil, errors.New("Decryption failure!")
+		return nil, errors.New("decryption failure")
 	}
 }
 
@@ -131,5 +152,5 @@ func decryptPW(pw, msg []byte) ([]byte, error) {
  * key: a pointer to an empty KeyObj to be populated with user data
  */
 func generateKeyPair(ctx *WindowCtx, key *KeyObj) bool {
-	return constructKey(ctx.win, key)
+	return constructKey(ctx, key)
 }

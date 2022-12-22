@@ -153,11 +153,13 @@ func exportKey(ctx *WindowCtx) {
 
 // Resets context to initial state
 func (ctx *WindowCtx) Reset() {
+	ctx.notePad.SetText("")
 	ctx.notePad = nil
 	ctx.initialState = true
 	ctx.loadedFile = nil
 	ctx.loadedKey = nil
-	ctx.notePad = createScrollableTextArea(ctx)
+	ctx.notePad = setupNotepad(ctx)
+	ctx.progressBar.SetFraction(0)
 	setupKeyTable(ctx)
 	ctx.status.SetText("Status: Ready")
 	ctx.win.ShowAll()
