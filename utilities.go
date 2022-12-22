@@ -59,13 +59,13 @@ func HexToBytes(hexString string) []byte {
 
 // Main entry point for file and text processing. Converts byte array to
 // series of state arrays per FIPS 202 format.
-func BytesToStates(in []byte, rateInBytes int) [][25]uint64 {
-	stateArray := make([][25]uint64, (len(in) / rateInBytes)) //must accommodate enough states for datalength (in bytes) / rate
+func BytesToStates(in *[]byte, rateInBytes int) [][25]uint64 {
+	stateArray := make([][25]uint64, (len(*in) / rateInBytes)) //must accommodate enough states for datalength (in bytes) / rate
 	offset := uint64(0)
 	for i := 0; i < len(stateArray); i++ { //iterate through each state in stateArray
 		var state [25]uint64                      // init empty state
 		for j := 0; j < (rateInBytes*8)/64; j++ { //fill each state with rate # of bits
-			state[j] = BytesToLane(in, offset)
+			state[j] = BytesToLane(*in, offset)
 			offset += 8
 		}
 		stateArray[i] = state

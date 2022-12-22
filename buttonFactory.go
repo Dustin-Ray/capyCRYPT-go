@@ -82,16 +82,25 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		password, result := passwordEntryDialog(ctx.win, "decryption")
 		if result {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-			fmttedMsg := parseSOAPMessage(text)
-			message, err := decryptPW([]byte(password), HexToBytes(fmttedMsg))
-			if err != nil {
-				ctx.updateStatus("error received: " + err.Error())
+			if len(text) > 128 {
+				fmttedMsg, err1 := parseSOAPMessage(text)
+				if err1 != nil {
+					ctx.updateStatus("error received: " + err1.Error())
+				} else {
+
+					message, err := decryptPW([]byte(password), HexToBytes(fmttedMsg))
+					if err != nil {
+						ctx.updateStatus("error received: " + err.Error())
+					}
+
+					ctx.notePad.SetText(string(message))
+					ctx.updateStatus("decryption successful")
+				}
 			} else {
-				ctx.notePad.SetText(string(message))
-				ctx.updateStatus("Decryption successful")
+				ctx.updateStatus("decryption failed: malformed message")
 			}
 		} else {
-			ctx.updateStatus("Decryption cancelled")
+			ctx.updateStatus("decryption cancelled")
 		}
 	})
 

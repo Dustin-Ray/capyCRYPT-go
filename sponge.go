@@ -9,7 +9,7 @@ func SpongeAbsorb(m *[]byte, capacity int) *[25]uint64 {
 	if len(*m)%rateInBytes != 0 {
 		P = padTenOne(*m, rateInBytes)
 	}
-	stateArray := BytesToStates(P, rateInBytes)
+	stateArray := BytesToStates(&P, rateInBytes)
 	var S [25]uint64
 	for _, st := range stateArray {
 		S = Xorstates(S, st)

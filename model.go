@@ -125,22 +125,27 @@ func encryptPW(pw []byte, msg *[]byte) []byte {
  */
 func decryptPW(pw, msg []byte) ([]byte, error) {
 
-	z := msg[:64]
-	c := msg[64 : len(msg)-64]
-	cP := make([]byte, len(msg)-128)
-	copy(cP, c)
-	t := msg[len(msg)-64:]
-	ke_ka := KMACXOF256(append(z, pw...), []byte{}, 1024, "S")
-	ke := ke_ka[:64]
-	ka := ke_ka[64:]
+	//len(z + t) = 128, anything less cannot be a valid message
+	if len(msg) > 64 {
+		z := msg[:64]
+		c := msg[64 : len(msg)-64]
+		cP := make([]byte, len(msg)-128)
+		copy(cP, c)
+		t := msg[len(msg)-64:]
+		ke_ka := KMACXOF256(append(z, pw...), []byte{}, 1024, "S")
+		ke := ke_ka[:64]
+		ka := ke_ka[64:]
 
-	pW := KMACXOF256(ke, []byte{}, len(c)*8, "SKE")
-	m := XorBytes(cP, pW)
-	tP := KMACXOF256(ka, m, 512, "SKA")
-	if bytes.Equal(t, tP) {
-		return m, nil
+		pW := KMACXOF256(ke, []byte{}, len(c)*8, "SKE")
+		m := XorBytes(cP, pW)
+		tP := KMACXOF256(ka, m, 512, "SKA")
+		if bytes.Equal(t, tP) {
+			return m, nil
+		} else {
+			return nil, errors.New("decryption failure")
+		}
 	} else {
-		return nil, errors.New("decryption failure")
+		return nil, errors.New("malformed message, unable to decrypt")
 	}
 }
 
