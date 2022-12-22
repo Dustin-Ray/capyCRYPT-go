@@ -6,8 +6,6 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
-//A factory that produces the buttons and corresponding signals to be used in the view.
-
 // adds buttons in a factory style to fixed context
 func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 
@@ -74,7 +72,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		}
 	}) //etc....
 
-	//Symmettric Decryption
+	//Symmettric Decryption. Emits ambiguous errors for security of password.
 	buttonList[3].SetTooltipMarkup("Decrypts data under a passphrase. Can only be decrypted by parties with knowledge of the passphrase.")
 	buttonList[3].Connect("clicked", func() {
 		ctx.initialState = false
@@ -82,22 +80,23 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		password, result := passwordEntryDialog(ctx.win, "decryption")
 		if result {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+			//1st check: a valid message must be at least 128 bytes long
 			if len(text) > 128 {
 				fmttedMsg, err1 := parseSOAPMessage(text)
+				//2nd check: a message must be formatted as SOAP
 				if err1 != nil {
 					ctx.updateStatus("error received: " + err1.Error())
 				} else {
-
 					message, err := decryptPW([]byte(password), HexToBytes(fmttedMsg))
+					//3rd check: decryption password must be valid
 					if err != nil {
 						ctx.updateStatus("error received: " + err.Error())
 					}
-
 					ctx.notePad.SetText(string(message))
 					ctx.updateStatus("decryption successful")
 				}
 			} else {
-				ctx.updateStatus("decryption failed: malformed message")
+				ctx.updateStatus("malformed cryptogram, unable to decrypt")
 			}
 		} else {
 			ctx.updateStatus("decryption cancelled")
@@ -138,6 +137,8 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 	return &buttonList
 }
 
+// Disables buttons while operation is being performed, reenables buttons when finished.
+// Reset toggles buttons on
 func (ctx *WindowCtx) toggleButtons(buttonList *[]gtk.Button, setting bool) {
 	for _, button := range *buttonList {
 		button.SetSensitive(setting)

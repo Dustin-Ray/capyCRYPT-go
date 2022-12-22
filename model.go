@@ -142,10 +142,10 @@ func decryptPW(pw, msg []byte) ([]byte, error) {
 		if bytes.Equal(t, tP) {
 			return m, nil
 		} else {
-			return nil, errors.New("decryption failure")
+			return nil, errors.New("malformed cryptogram, unable to decrypt")
 		}
 	} else {
-		return nil, errors.New("malformed message, unable to decrypt")
+		return nil, errors.New("malformed cryptogram, unable to decrypt")
 	}
 }
 

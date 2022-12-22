@@ -45,10 +45,8 @@ func getSOAPMessage(message string, ctx *WindowCtx) string {
 // Parses a SOAP formatted string by removing header and footer and all newlines.
 func parseSOAPMessage(message string) (string, error) {
 	lines := strings.Split(message, "\n")
-
 	if lines[0] == "-----------BEGIN-SOAP-MESSAGE-----------" &&
 		lines[len(lines)-1] == "------------END-SOAP-MESSAGE------------" {
-
 		str := strings.Join(lines[1:len(lines)-1], "\n")
 		regex := regexp.MustCompile(`[\r\n]+`)
 		strippedString := regex.ReplaceAllString(str, "")
