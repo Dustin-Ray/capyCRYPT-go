@@ -141,14 +141,30 @@ func getScrollableTextArea(ctx *WindowCtx, textForBuffer string) gtk.ScrolledWin
 }
 
 // Exports selected or loaded key to file
-func exportKey(ctx *WindowCtx) {
+func exportPrivateKey(ctx *WindowCtx) {
 	if ctx.loadedKey != nil {
 		KeyToJSON(ctx.loadedKey)
 		exportKeyDialog(ctx, "Save File")
 	} else {
 		ctx.updateStatus("Export failed - no key selected")
 	}
+}
 
+// Exports selected or loaded public key to file
+func exportPublicKey(ctx *WindowCtx) {
+	if ctx.loadedKey != nil {
+		key := ctx.loadedKey
+		//generate different IDs for public and private keys
+		r := generateRandomBytes(200)
+		r = append(r, []byte(key.Id)...) //Delim Suffix for key ID
+		key.Id = hex.EncodeToString(SpongeSqueeze(SpongeAbsorb(&r, 256), 48, 136))
+		key.PrivKey = ""
+		key.KeyType = "PUBLIC"
+		KeyToJSON(key)
+		exportKeyDialog(ctx, "Save File")
+	} else {
+		ctx.updateStatus("Export failed - no key selected")
+	}
 }
 
 // Resets context to initial state

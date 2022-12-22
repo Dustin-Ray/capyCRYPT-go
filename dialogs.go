@@ -108,11 +108,14 @@ func constructKey(ctx *WindowCtx, key *KeyObj) bool {
 	hBox2.Add(entry)
 	hBox3.Add(confirm)
 
+	ownerLbl.SetTooltipMarkup("Owner of key can be a name, email address, or some other identifier. Cannot be blank.")
+
 	entry.SetVisibility(false)
 	confirm.SetVisibility(false)
 
 	//generate a random key id using sponge
 	r := generateRandomBytes(200)
+	r = append(r, 0x18) //Delim Suffix for key ID
 	key.Id = hex.EncodeToString(SpongeSqueeze(SpongeAbsorb(&r, 256), 48, 136))
 	key.Owner = "NONE"
 	key.KeyType = "PRIVATE"
@@ -141,15 +144,18 @@ func rightCLickMenu(ctx *WindowCtx) {
 	menu, _ := gtk.MenuNew()
 	// Create a MenuItem to be used in our Menu.
 	details, _ := gtk.MenuItemNewWithLabel("Details...")
-	export, _ := gtk.MenuItemNewWithLabel("Export...")
+	pubKeyExport, _ := gtk.MenuItemNewWithLabel("Export public key...")
+	privKeyExport, _ := gtk.MenuItemNewWithLabel("Export private keypair...")
 
 	// Add the MenuItem to the Menu.
 	menu.Append(details)
-	menu.Append(export)
+	menu.Append(pubKeyExport)
+	menu.Append(privKeyExport)
 
 	// Connect a signal handler to the MenuItem's "activate" signal.
 	details.Connect("activate", func() { showKeyDetails(ctx) })
-	export.Connect("activate", func() { exportKey(ctx) })
+	pubKeyExport.Connect("activate", func() { exportPublicKey(ctx) })
+	privKeyExport.Connect("activate", func() { exportPrivateKey(ctx) })
 	menu.ShowAll()
 	// Connect the "button-press-event" signal to our handler.
 	ctx.keytable.treeview.Connect("button-press-event", func(treeView *gtk.TreeView, event *gdk.Event) {

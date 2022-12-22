@@ -18,7 +18,7 @@ type WindowCtx struct {
 	win          *gtk.Window      // Main window containing fixed container
 	fixed        *gtk.Fixed       // Fixed allows for precise arbitrary placement of widgets
 	loadedFile   *os.File         // Represents the selected file either dropped in window or selected from chooser
-	notePad      *gtk.TextBuffer  // The text area where input and output is processed
+	notePad      *gtk.TextBuffer  // The text area displaying input and output
 	initialState bool             // Signals if window is waiting for user input, can also be used to cancel running ops
 	status       *gtk.Label       // Outputs operation status and error messages
 	keytable     *KeyTable        // A table storing all imported keys
@@ -42,34 +42,40 @@ func main() {
 	gtk.Main()
 }
 
-// Sets the window to the initial state.
+// Sets the window to the initial state and initializes all widgets
 func initialize() *WindowCtx {
 
 	ctx := WindowCtx{}
-	ctx.win = setupWindow()
-	ctx.fixed = newFixed()
-
 	ctx.initialState = true
 	ctx.fileMode = false
+	ctx.loadedFile = nil
+	ctx.win = setupWindow()
+	ctx.fixed = newFixed()
 	ctx.win.Add(ctx.fixed)
 
-	ctx.loadedFile = nil
 	ctx.notePad = setupNotepad(&ctx)
-
-	ctx.status, _ = gtk.LabelNew("Status: Ready")
-	ctx.fixed.Put(ctx.status, 245, 540)
-
 	ctx.buttons = setupButtons(&ctx)
 	setupLabels(&ctx)
 	setupMenuBar(&ctx)
 	setupKeyTable(&ctx)
 	setupProgressBar(&ctx)
+	setupStatus(&ctx)
+	setupCSS()
+	return &ctx
+}
 
+// Sets up CSS for styling of window
+func setupCSS() {
 	cssProvider, _ := gtk.CssProviderNew()
 	cssProvider.LoadFromPath("style.css")
 	screen, _ := gdk.ScreenGetDefault()
 	gtk.AddProviderForScreen(screen, cssProvider, 0)
-	return &ctx
+}
+
+// Sets up status indicator for window
+func setupStatus(ctx *WindowCtx) {
+	ctx.status, _ = gtk.LabelNew("Status: Ready")
+	ctx.fixed.Put(ctx.status, 245, 540)
 }
 
 // Updates the status message following an operation
@@ -98,7 +104,7 @@ func setupWindow() *gtk.Window {
 
 /*
  * The notepad is the primary location of interaction for the application.
- * A user can either enter text directly or they can drag and drop a file into the window
+ * A user can either enter text directly or drag and drop a file into the window
  * to perform cryptographic operations on the data. If the user edits the file details, the
  * session switches to text mode and any operations requested are performed over the notepad
  * text. Any UTF-8 characters can be processed by the notepad, including emojis and other
@@ -127,7 +133,6 @@ func setupNotepad(ctxWin *WindowCtx) *gtk.TextBuffer {
 		}
 		buf.SetText("Successfully loaded ")
 		ctxWin.updateStatus("Switched to file processing mode")
-
 		ctxWin.fileMode = true
 	})
 
@@ -171,7 +176,7 @@ func setupMenuBar(ctx *WindowCtx) {
 
 	//setup import and export funtionality
 	keysImport.Connect("activate", func() { importKeyDialog(ctx) })
-	keysExport.Connect("activate", func() { exportKey(ctx) })
+	keysExport.Connect("activate", func() { exportPrivateKey(ctx) })
 
 	keysDropDown.Append(keysImport)
 	keysDropDown.Append(keysExport)
@@ -191,6 +196,7 @@ func setupLabels(ctx *WindowCtx) {
 	buttonsLabel, _ := gtk.LabelNew("Text Operations:")
 	notePadLabel, _ := gtk.LabelNew("Notepad:")
 	keysLabel, _ := gtk.LabelNew("Select an encryption key: ")
+	keysLabel.SetTooltipMarkup("Click on a key to use it for message encryption. Right click the key to view details or to save it to a file.")
 
 	buttonsLabel.SetName("textOpsLabel") //for CSS styling
 	notePadLabel.SetName("notepadLabel") //for CSS styling
