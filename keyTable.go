@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -65,7 +64,7 @@ func (kt *KeyTable) importKey(ctx *WindowCtx, key KeyObj) {
 	if query == emptyKey {
 		kt.keyList[key.Id] = key
 		updateStore(kt, &key)
-		ctx.updateStatus("Key import successful")
+		ctx.updateStatus("Key " + key.Id + " imported")
 	} else {
 		ctx.updateStatus("Key " + query.Id + " already imported")
 	}
@@ -139,29 +138,26 @@ func setupKeyTable(ctx *WindowCtx) {
 
 	})
 	newTreeView.Connect("button-press-event", func(tv *gtk.TreeView, event *gdk.Event) {
+
 		// Get the list store
 		liststore, err := tv.GetModel()
 		if err != nil {
-			fmt.Println("liststore: ")
-			fmt.Println(err)
+			return
 		}
 		sel, err := tv.GetSelection()
 		_, iter, ok := sel.GetSelected()
-		if !ok {
-			fmt.Println("iter: ")
-			fmt.Println(err)
+		if !ok || err != nil {
+			return
 		}
 
 		// Get the value from the list store
 		id, err := liststore.ToTreeModel().GetValue(iter, 0)
 		if err != nil {
-			fmt.Println("id: ")
-			fmt.Println(err)
+			return
 		}
 		idVal, err := id.GetString()
 		if err != nil {
-			fmt.Println("idval: ")
-			fmt.Println(err)
+			return
 		}
 		var lookupKey = ctx.keytable.keyList[idVal]
 		ctx.loadedKey = &lookupKey

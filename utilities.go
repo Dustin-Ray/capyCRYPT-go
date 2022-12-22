@@ -5,7 +5,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"time"
 
+	"github.com/gotk3/gotk3/gtk"
 	"github.com/lukechampine/fastxor"
 )
 
@@ -88,4 +91,44 @@ func XorBytes(a, b []byte) []byte {
 	dst := make([]byte, len(a))
 	fastxor.Bytes(dst, a, b)
 	return dst
+}
+
+func setKeyData(key *KeyObj, password2 string, owner string) {
+	s := new(big.Int).SetBytes(KMACXOF256([]byte(password2), []byte{}, 512, "K"))
+	V := *GenPoint()
+	V = *V.SecMul(s)
+	key.Owner = owner
+	key.PrivKey = password2
+	key.PubKeyX = V.x.String()
+	key.PubKeyY = V.y.String()
+	key.DateCreated = time.Now().Format(time.RFC1123)
+	key.Signature = "test"
+}
+
+// function to check if pwds match
+func changed(pwd, confirm *gtk.Entry, matched *bool, okBtn *gtk.Button) {
+	// Get the entered password
+	password1, _ := pwd.GetText()
+	password2, _ := confirm.GetText()
+	if password2 == password1 {
+		*matched = true
+		okBtn.SetSensitive(*matched)
+	} else {
+		*matched = false
+		okBtn.SetSensitive(*matched)
+	}
+}
+
+func getScrollableTextArea(ctx *WindowCtx, textForBuffer string) gtk.ScrolledWindow {
+
+	scrollableTextArea, _ := gtk.ScrolledWindowNew(nil, nil)
+	buf, _ := gtk.TextBufferNew(nil)
+	textView, _ := gtk.TextViewNewWithBuffer(buf)
+	textView.SetBuffer(buf)
+	scrollableTextArea.Add(textView)
+	scrollableTextArea.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+	textView.SetWrapMode(gtk.WRAP_CHAR)
+	scrollableTextArea.SetSizeRequest(200, 100)
+	buf.SetText(textForBuffer)
+	return *scrollableTextArea
 }

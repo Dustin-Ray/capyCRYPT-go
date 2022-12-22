@@ -94,6 +94,6 @@ func decryptPW(pw, msg []byte) []byte {
  *  V <- s*G
  *  key pair: (s, V)
  */
-func generateKeyPair(ctx *WindowCtx, key *KeyObj) {
-	constructKey(ctx.win, key)
+func generateKeyPair(ctx *WindowCtx, key *KeyObj) bool {
+	return constructKey(ctx.win, key)
 }

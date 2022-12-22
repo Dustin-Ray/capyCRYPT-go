@@ -3,9 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	"os"
-	"time"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -16,16 +14,13 @@ Displays a password entry dialog that asks a user for a passphrase.
 Any input is considered a valid passphrase including the empty string.
 OK button is disabled if content of password entry fields do not match.
 */
-func showPasswordDialog(parent *gtk.Window, message string) []byte {
+func passwordEntryDialog(parent *gtk.Window, message string) (string, bool) {
 	// Create a dialog
 	dialog, _ := gtk.DialogNew()
-
-	dialog.SetTransientFor(parent)
 	dialog.SetTitle("Enter " + message + " password:")
 
 	okButton, _ := dialog.AddButton("OK", gtk.RESPONSE_OK)
 	okButton.SetSensitive(true)
-	dialog.AddButton("Cancel", gtk.RESPONSE_CANCEL)
 
 	// Create a horizontal box
 	vBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 10)
@@ -45,66 +40,46 @@ func showPasswordDialog(parent *gtk.Window, message string) []byte {
 	hBox1.Add(lbl)
 	hBox2.Add(conf)
 
-	// Create a password entry (this might be where everything is blowing up)
+	// Create a password entry
 	entry, _ := gtk.EntryNew()
-	entry.SetVisibility(false)
-	hBox1.Add(entry)
-
 	confirm, _ := gtk.EntryNew()
+	entry.SetVisibility(false)
 	confirm.SetVisibility(false)
-
-	password1, _ := entry.GetText()
-	password2, _ := confirm.GetText()
-
-	confirm.Connect("changed", func() {
-		// Get the entered password
-		password1, _ = entry.GetText()
-		password2, _ = confirm.GetText()
-		if password2 == password1 {
-			okButton.SetSensitive(true)
-		} else {
-			okButton.SetSensitive(false)
-		}
-	})
-
-	entry.Connect("changed", func() {
-		// Get the entered password
-
-		password1, _ = entry.GetText()
-		password2, _ = confirm.GetText()
-		if password2 == password1 {
-			okButton.SetSensitive(true)
-		} else {
-			okButton.SetSensitive(false)
-		}
-	})
-
+	hBox1.Add(entry)
 	hBox2.Add(confirm)
+
+	matched := true
+
+	confirm.Connect("changed", func() { changed(entry, confirm, &matched, okButton) })
+	entry.Connect("changed", func() { changed(entry, confirm, &matched, okButton) })
 
 	// Show the dialog
 	dialog.ShowAll()
-	dialog.Run()
-
-	// Hide the dialog
-	dialog.Hide()
-
-	// Print the password
-	// return []byte(password1)
-	return []byte(password2)
+	if dialog.Run() == gtk.RESPONSE_OK {
+		password, _ := confirm.GetText()
+		dialog.Destroy()
+		return password, true
+	}
+	// close the dialog
+	dialog.Destroy()
+	return "", false
 }
 
-func constructKey(parent *gtk.Window, key *KeyObj) {
+func constructKey(parent *gtk.Window, key *KeyObj) bool {
 
 	// Create a dialog
 	dialog, _ := gtk.DialogNew()
-	dialog.SetTransientFor(parent)
 	dialog.SetTitle("Create new key: ")
 
 	okButton, _ := dialog.AddButton("OK", gtk.RESPONSE_OK)
-	okButton.SetSensitive(true)
-	dialog.AddButton("Cancel", gtk.RESPONSE_CANCEL)
+	okButton.SetSensitive(false)
 
-	// Create a horizontal box
+	//boolean to check if pwds match
+	matched := true
+	//Signals whether operation was completed or cancelled
+	opResult := false
+
+	// Create a boxes to store entry fields and labels
 	vBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 10)
 	hBox1, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 10)
 	hBox2, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 10)
@@ -120,66 +95,43 @@ func constructKey(parent *gtk.Window, key *KeyObj) {
 	ownerLbl, _ := gtk.LabelNew("Owner:       ")
 	lbl, _ := gtk.LabelNew("Password: ")
 	conf, _ := gtk.LabelNew("Confirm:     ")
+	owner, _ := gtk.EntryNew()
+	entry, _ := gtk.EntryNew()
+	confirm, _ := gtk.EntryNew()
 
 	hBox1.Add(ownerLbl)
 	hBox2.Add(lbl)
 	hBox3.Add(conf)
-
-	owner, _ := gtk.EntryNew()
-	pwd, _ := gtk.EntryNew()
-	pwd.SetVisibility(false)
-
-	confirm, _ := gtk.EntryNew()
-	confirm.SetVisibility(false)
-
 	hBox1.Add(owner)
-	hBox2.Add(pwd)
+	hBox2.Add(entry)
 	hBox3.Add(confirm)
 
-	key.Id = hex.EncodeToString(generateRandomBytes(6))
+	entry.SetVisibility(false)
+	confirm.SetVisibility(false)
+
+	//generate a random key id using sponge
+	r := generateRandomBytes(200)
+	key.Id = hex.EncodeToString(SpongeSqueeze(SpongeAbsorb(&r, 256), 48, 136))
 	key.Owner = "NONE"
 	key.KeyType = "PRIVATE"
 
-	confirm.Connect("changed", func() {
-		// Get the entered password
-		password1, _ := pwd.GetText()
-		password2, _ := confirm.GetText()
-		ot, _ := owner.GetText()
-		if password2 == password1 {
-			setKeyData(key, password2, ot)
-			okButton.SetSensitive(true)
-		} else {
-			okButton.SetSensitive(false)
-		}
-	})
+	confirm.Connect("changed", func() { changed(entry, confirm, &matched, okButton) })
+	entry.Connect("changed", func() { changed(entry, confirm, &matched, okButton) })
 
-	pwd.Connect("changed", func() {
-		// Get the entered password
-		password1, _ := pwd.GetText()
-		password2, _ := confirm.GetText()
-		ot, _ := owner.GetText()
-		if password2 == password1 {
-			setKeyData(key, password2, ot)
-			okButton.SetSensitive(true)
-		} else {
-			okButton.SetSensitive(false)
-		}
-	})
+	// Show the dialog
 	dialog.ShowAll()
-	dialog.Run()
-	dialog.Hide()
-}
-
-func setKeyData(key *KeyObj, password2 string, owner string) {
-	s := new(big.Int).SetBytes(KMACXOF256([]byte(password2), []byte{}, 512, "K"))
-	V := *GenPoint()
-	V = *V.SecMul(s)
-	key.Owner = owner
-	key.PrivKey = password2
-	key.PubKeyX = V.x.String()
-	key.PubKeyY = V.y.String()
-	key.DateCreated = time.Now().Format(time.RFC1123)
-	key.Signature = "test"
+	if dialog.Run() == gtk.RESPONSE_OK {
+		if matched {
+			ot, _ := owner.GetText()
+			password2, _ := confirm.GetText()
+			setKeyData(key, password2, ot)
+			dialog.Destroy()
+			return true
+		}
+	}
+	// close the dialog
+	dialog.Destroy()
+	return opResult
 }
 
 func rightCLickMenu(ctx *WindowCtx) {
@@ -221,7 +173,7 @@ func showKeyDetails(ctx *WindowCtx) {
 	KEYTYPE, _ := gtk.LabelNew("KEY TYPE: " + key.KeyType)
 	PubKeyX, _ := gtk.LabelNew("PUB KEY X: ")
 	PubKeyY, _ := gtk.LabelNew("PUB KEY Y: ")
-	PrivKey, _ := gtk.LabelNew("PRIV KEY: " + "NONE")
+	PrivKey, _ := gtk.LabelNew("PRIV KEY: ")
 	if ctx.loadedKey.KeyType != "NONE" {
 		PrivKey, _ = gtk.LabelNew("PRIV KEY: " + ctx.loadedKey.PrivKey)
 	}
@@ -242,6 +194,12 @@ func showKeyDetails(ctx *WindowCtx) {
 
 	fixed.Put(PrivKey, 25, 270)
 	fixed.Put(DateCreated, 25, 305)
+
+	ID.SetSelectable(true)
+	Owner.SetSelectable(true)
+	KEYTYPE.SetSelectable(true)
+	PrivKey.SetSelectable(true)
+	DateCreated.SetSelectable(true)
 
 	dialog.ShowAll()
 }
@@ -307,18 +265,4 @@ func openDialog(ctx *WindowCtx) {
 	}
 	// Destroy the dialog when done
 	fileDialog.Destroy()
-}
-
-func getScrollableTextArea(ctx *WindowCtx, textForBuffer string) gtk.ScrolledWindow {
-
-	scrollableTextArea, _ := gtk.ScrolledWindowNew(nil, nil)
-	buf, _ := gtk.TextBufferNew(nil)
-	textView, _ := gtk.TextViewNewWithBuffer(buf)
-	textView.SetBuffer(buf)
-	scrollableTextArea.Add(textView)
-	scrollableTextArea.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-	textView.SetWrapMode(gtk.WRAP_CHAR)
-	scrollableTextArea.SetSizeRequest(200, 100)
-	buf.SetText(textForBuffer)
-	return *scrollableTextArea
 }
