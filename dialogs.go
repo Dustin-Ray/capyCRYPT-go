@@ -175,7 +175,7 @@ func showKeyDetails(ctx *WindowCtx) {
 	fixed, _ := gtk.FixedNew()
 
 	dialog.SetPosition(gtk.WIN_POS_CENTER)
-	dialog.SetDefaultSize(490, 365)
+	dialog.SetDefaultSize(490, 500)
 	dialog.SetTitle("Key details: ")
 
 	// Create a label and set its text.
@@ -186,9 +186,7 @@ func showKeyDetails(ctx *WindowCtx) {
 	PubKeyX, _ := gtk.LabelNew("PUB KEY X: ")
 	PubKeyY, _ := gtk.LabelNew("PUB KEY Y: ")
 	PrivKey, _ := gtk.LabelNew("PRIV KEY: ")
-	if ctx.loadedKey.KeyType != "NONE" {
-		PrivKey, _ = gtk.LabelNew("PRIV KEY: " + ctx.loadedKey.PrivKey)
-	}
+
 	DateCreated, _ := gtk.LabelNew("DATE CREATED: " + key.DateCreated)
 
 	dialog.Add(fixed)
@@ -204,8 +202,11 @@ func showKeyDetails(ctx *WindowCtx) {
 	fixed.Put(PubKeyY, 250, 130)
 	fixed.Put(&pubKeyYWindow, 250, 155)
 
+	privKeyWindow := getScrollableTextArea(ctx, ctx.loadedKey.PrivKey)
 	fixed.Put(PrivKey, 25, 270)
-	fixed.Put(DateCreated, 25, 305)
+	fixed.Put(&privKeyWindow, 25, 295)
+
+	fixed.Put(DateCreated, 25, 425)
 
 	ID.SetSelectable(true)
 	Owner.SetSelectable(true)
@@ -315,6 +316,7 @@ func showRestWarningDialog(ctx *WindowCtx) {
 	}
 }
 
+// Prevents GUI from freezing and updates progress bar
 func refreshWindow() {
 
 	for {

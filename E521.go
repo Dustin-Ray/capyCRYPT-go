@@ -17,7 +17,7 @@ type E521 struct {
 	p big.Int // Mersenne prime defining a finite field F(p)
 	d big.Int // d = -376014
 	r big.Int // number of points on Curve -> n := 4 * (R) .
-	s string  //string representation of point
+	n big.Int //4 * r
 }
 
 // number of points on Curve -> n := 4 * (R) .
@@ -35,53 +35,74 @@ func (e *E521) getP() big.Int {
 	return *P
 }
 
-// constructor for E521 with arbitrary return
-func NewE521(x, y big.Int) *E521 {
+// constructor for E521 for any x, y
+func NewE521XY(x, y big.Int) *E521 {
+	tempR := new(E521).getR()
 	point := E521{
 		x: x,
 		y: y,
 		p: new(E521).getP(),
 		d: *big.NewInt(-376014),
-		r: new(E521).getR(),
-		s: "x coord:\n" + x.String() + "\ny coord:\n" + y.String(),
+		r: tempR,
+		n: *new(E521).r.Mul(&tempR, big.NewInt(4)),
+	}
+	return &point
+}
+
+// constructor for E521, solves for y
+func NewE521X(x big.Int, msb uint) *E521 {
+	tempR := new(E521).getR()
+	point := E521{
+		x: x,
+		y: *solveForY(&x, new(E521).getP(), msb),
+		p: new(E521).getP(),
+		d: *big.NewInt(-376014),
+		r: tempR,
+		n: *new(E521).r.Mul(&tempR, big.NewInt(4)),
 	}
 	return &point
 }
 
 // Generator point for the curve, with x = 4 and y a unique even number obtained
 // from solving curve equation.
-func GenPoint() *E521 {
+func E521GenPoint(msb uint) *E521 {
+	tempR := new(E521).getR()
+
 	P := new(E521).getP()
 	X := big.NewInt(4)
+	Y := solveForY(X, P, msb)
+	point := E521{
+		x: *X,
+		y: *Y,
+		p: P,
+		d: *big.NewInt(-376014),
+		r: tempR,
+		n: *new(E521).r.Mul(&tempR, big.NewInt(4)),
+	}
+	return &point
+
+}
+
+func solveForY(X *big.Int, P big.Int, msb uint) *big.Int {
 	num := new(big.Int).Sub(big.NewInt(1), new(big.Int).Exp(X, big.NewInt(2), nil))
 	num = num.Mod(num, &P)
 	denom := new(big.Int).Add(big.NewInt(1), (new(big.Int).Mul(big.NewInt(376014), new(big.Int).Exp(X, big.NewInt(2), nil))))
 	denom = denom.Mod(denom, &P)
 	denom = new(big.Int).ModInverse(denom, &P)
 	radicand := new(big.Int).Mul(num, denom)
-
-	Y := sqrt(radicand, 0)
-	point := E521{
-		x: *X,
-		y: *Y,
-		p: P,
-		d: *big.NewInt(-376014),
-		r: new(E521).getR(),
-		s: "x coord:\n" + X.String() + "\ny coord:\n" + Y.String(),
-	}
-	return &point
-
+	Y := sqrt(radicand, msb)
+	return Y
 }
 
 // The identity point of the curve (also refered to as "point at infinity").
 // Equivalent to 0 in integer group.
-func IDPoint() *E521 { return NewE521(*big.NewInt(0), *big.NewInt(1)) }
+func E521IdPoint() *E521 { return NewE521XY(*big.NewInt(0), *big.NewInt(1)) }
 
 /*
 Gets the opposite value of a point, defined as the following:
 if P = (X, Y), opposite of P = (-X, Y).
 */
-func (e *E521) getOpposite() *E521 { return NewE521(*e.x.Neg(&e.x), e.y) }
+func (e *E521) getOpposite() *E521 { return NewE521XY(*e.x.Neg(&e.x), e.y) }
 
 // Checks two points for equality by comparing their coordinates.
 func (A *E521) Equals(B *E521) bool { return A.x.Cmp(&B.x) == 0 && A.y.Cmp(&B.y) == 0 }
@@ -123,20 +144,20 @@ func (A *E521) Add(B *E521) *E521 {
 	newY := new(big.Int).Mul(yNum, yDenom)
 	newY.Mod(newY, &A.p)
 
-	return NewE521(*newX, *newY)
+	return NewE521XY(*newX, *newY)
 }
 
 /*
 EC Multiplication algorithm using the Montgomery Ladder approach to mitigate
 power consumption side channel attacks. Mostly constructed around:
 
-	"https://eprint.iacr.org/2014/140.pdf" (pg 4.)
+(pg 4.)	https://eprint.iacr.org/2014/140.pdf
 
 S is a  scalar value to multiply by. S is a private key and should be kept secret.
 Returns Curve.E521 point which is result of multiplication.
 */
 func (r1 *E521) SecMul(S *big.Int) *E521 {
-	r0 := NewE521(*big.NewInt(0), *big.NewInt(1))
+	r0 := NewE521XY(*big.NewInt(0), *big.NewInt(1))
 	for i := S.BitLen(); i >= 0; i-- {
 		if S.Bit(i) == 1 {
 			r0 = r0.Add(r1)

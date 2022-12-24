@@ -30,7 +30,7 @@ type WindowCtx struct {
 
 // Entry point
 func main() {
-
+	// runtests()
 	gtk.Init(nil)
 	window := initialize()
 	settings, _ := gtk.SettingsGetDefault()

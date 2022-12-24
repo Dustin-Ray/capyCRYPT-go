@@ -5,29 +5,29 @@ import (
 	"math/big"
 )
 
-// func main() {
+func run() {
 
-// 	Zero()
-// 	One()
-// 	GPlusMinusG()
-// 	TwoTimesG()
-// 	FourTimesG()
-// 	NotZero()
-// 	rTimesG()
-// 	TestkTimesGAndkmodRTimesG()
-// 	TestkPlus1TimesG()
-// 	ktTimesgEqualskgtg()
-// 	ktpEqualstkGEqualsktmodrG()
+	Zero()
+	One()
+	GPlusMinusG()
+	TwoTimesG()
+	FourTimesG()
+	NotZero()
+	rTimesG()
+	TestkTimesGAndkmodRTimesG()
+	TestkPlus1TimesG()
+	ktTimesgEqualskgtg()
+	ktpEqualstkGEqualsktmodrG()
 
-// }
+}
 
 func Zero() {
 
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := IDPoint()
-		if G.SecMul(big.NewInt(0)).Equals(IDPoint()) {
+		G := E521IdPoint()
+		if G.SecMul(big.NewInt(0)).Equals(E521IdPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -41,8 +41,8 @@ func One() {
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := GenPoint()
-		if G.SecMul(big.NewInt(1)).Equals(GenPoint()) {
+		G := E521GenPoint(0)
+		if G.SecMul(big.NewInt(1)).Equals(E521GenPoint(0)) {
 			passedTestCount++
 		} else {
 			break
@@ -56,8 +56,8 @@ func GPlusMinusG() {
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := GenPoint()
-		if G.Add(GenPoint().getOpposite()).Equals(IDPoint()) {
+		G := E521GenPoint(0)
+		if G.Add(E521GenPoint(0).getOpposite()).Equals(E521IdPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -71,7 +71,7 @@ func TwoTimesG() {
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := GenPoint()
+		G := E521GenPoint(0)
 		if G.SecMul(big.NewInt(2)).Equals(G.Add(G)) {
 			passedTestCount++
 		} else {
@@ -86,7 +86,7 @@ func FourTimesG() {
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := GenPoint()
+		G := E521GenPoint(0)
 		if G.SecMul(big.NewInt(4)).Equals(G.SecMul(big.NewInt(2)).SecMul(big.NewInt(2))) {
 			passedTestCount++
 		} else {
@@ -101,8 +101,8 @@ func NotZero() {
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := GenPoint()
-		if !G.SecMul(big.NewInt(4)).Equals(IDPoint()) {
+		G := E521GenPoint(0)
+		if !G.SecMul(big.NewInt(4)).Equals(E521IdPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -117,8 +117,8 @@ func rTimesG() {
 	passedTestCount := 0
 	numberOfTests := 100
 	for i := 0; i < numberOfTests; i++ {
-		G := GenPoint()
-		if G.SecMul(&G.r).Equals(IDPoint()) {
+		G := E521GenPoint(0)
+		if G.SecMul(&G.r).Equals(E521IdPoint()) {
 			passedTestCount++
 		} else {
 			break
@@ -128,7 +128,7 @@ func rTimesG() {
 }
 
 func TestkTimesGAndkmodRTimesG() {
-	G := GenPoint()
+	G := E521GenPoint(0)
 	R := G.getR()
 
 	passedTestCount := 0
@@ -152,10 +152,10 @@ func TestkPlus1TimesG() {
 	numberOfTests := 50
 	for i := 0; i < numberOfTests; i++ {
 		k := generateRandomBigInt()
-		G2 := GenPoint().SecMul(k)
-		G2 = G2.Add(GenPoint())
+		G2 := E521GenPoint(0).SecMul(k)
+		G2 = G2.Add(E521GenPoint(0))
 		k = k.Add(k, big.NewInt(1))
-		G1 := GenPoint().SecMul(k)
+		G1 := E521GenPoint(0).SecMul(k)
 		if G1.Equals(G2) {
 			passedTestCount++
 		} else {
@@ -173,11 +173,11 @@ func ktTimesgEqualskgtg() {
 		k := generateRandomBigInt()
 		t := generateRandomBigInt()
 
-		G2 := GenPoint().SecMul(k)
-		G2 = G2.Add(GenPoint().SecMul(t))
+		G2 := E521GenPoint(0).SecMul(k)
+		G2 = G2.Add(E521GenPoint(0).SecMul(t))
 
 		x := new(big.Int).Add(k, t)
-		G1 := GenPoint().SecMul(x)
+		G1 := E521GenPoint(0).SecMul(x)
 
 		if G1.Equals(G2) {
 			passedTestCount++
@@ -196,12 +196,12 @@ func ktpEqualstkGEqualsktmodrG() {
 		k := generateRandomBigInt()
 		t := generateRandomBigInt()
 
-		ktP := GenPoint().SecMul(t).SecMul(k)
-		tkG := GenPoint().SecMul(k).SecMul(t)
+		ktP := E521GenPoint(0).SecMul(t).SecMul(k)
+		tkG := E521GenPoint(0).SecMul(k).SecMul(t)
 
 		ktmodr := k.Mul(k, t)
-		ktmodr = ktmodr.Mod(ktmodr, &GenPoint().r)
-		ktmodrG := GenPoint().SecMul(ktmodr)
+		ktmodr = ktmodr.Mod(ktmodr, &E521GenPoint(0).r)
+		ktmodrG := E521GenPoint(0).SecMul(ktmodr)
 
 		if ktP.Equals(tkG) && ktP.Equals(ktmodrG) {
 			passedTestCount++

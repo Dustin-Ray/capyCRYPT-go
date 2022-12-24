@@ -100,11 +100,15 @@ func XorBytes(a, b []byte) []byte {
 
 // Called to generate a key from collected user input
 func setKeyData(key *KeyObj, password2 string, owner string) {
-	s := new(big.Int).SetBytes(KMACXOF256([]byte(password2), []byte{}, 512, "K"))
-	V := *GenPoint()
+	temp := []byte(password2)
+	s := new(big.Int).SetBytes(KMACXOF256(&temp, &[]byte{}, 512, "K"))
+	s = s.Mul(s, big.NewInt(4))
+	s = s.Mod(s, &E521IdPoint().n)
+
+	V := *E521GenPoint(0)
 	V = *V.SecMul(s)
 	key.Owner = owner
-	key.PrivKey = password2
+	key.PrivKey = s.String()
 	key.PubKeyX = V.x.String()
 	key.PubKeyY = V.y.String()
 	key.DateCreated = time.Now().Format(time.RFC1123)

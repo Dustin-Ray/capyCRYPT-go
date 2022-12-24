@@ -3,6 +3,9 @@ package main
 //Button manufacturing facility
 
 import (
+	"encoding/hex"
+	"math/big"
+
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -48,9 +51,9 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		if result {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
 			ctx.notePad.SetText(ComputeTaggedHash([]byte(password), []byte(text), "T"))
-			ctx.updateStatus("Message tag computed successfully")
+			ctx.updateStatus("message tag computed successfully")
 		} else {
-			ctx.updateStatus("Tag computation cancelled")
+			ctx.updateStatus("tag computation cancelled")
 		}
 	})
 
@@ -64,39 +67,35 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), false)
 			textBytes := []byte(text)
 			ctx.toggleButtons(ctx.buttons, false)
-			ctx.notePad.SetText(getSOAPMessage(BytesToHexString(encryptPW([]byte(password), &textBytes)), ctx))
+			cg := encryptPW([]byte(password), &textBytes)
+			temp := hex.EncodeToString(*cg)
+			ctx.notePad.SetText(getSOAPMessage(temp, ctx))
 			ctx.toggleButtons(ctx.buttons, true)
-			ctx.updateStatus("Encryption successful")
+			ctx.updateStatus("encryption successful")
 		} else {
-			ctx.updateStatus("Encryption cancelled")
+			ctx.updateStatus("encryption cancelled")
 		}
 	}) //etc....
 
-	//Symmettric Decryption. Emits ambiguous errors for security of password.
+	//Symmetric Decryption. Emits ambiguous errors for security of password.
 	buttonList[3].SetTooltipMarkup("Decrypts data under a passphrase. Can only be decrypted by parties with knowledge of the passphrase.")
 	buttonList[3].Connect("clicked", func() {
 		ctx.initialState = false
 		ctx.fileMode = false
 		password, result := passwordEntryDialog(ctx.win, "decryption")
 		if result {
-			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-			//1st check: a valid message must be at least 128 bytes long
-			if len(text) > 128 {
-				fmttedMsg, err1 := parseSOAPMessage(text)
-				//2nd check: a message must be formatted as SOAP
-				if err1 != nil {
-					ctx.updateStatus("error received: " + err1.Error())
-				} else {
-					message, err := decryptPW([]byte(password), HexToBytes(fmttedMsg))
-					//3rd check: decryption password must be valid
-					if err != nil {
-						ctx.updateStatus("error received: " + err.Error())
-					}
-					ctx.notePad.SetText(string(message))
-					ctx.updateStatus("decryption successful")
-				}
+			notePadText, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+			psdMsg, err1 := parseSOAPMessage(&notePadText)
+			if err1 != nil {
+				ctx.updateStatus("unable to decrypt")
 			} else {
-				ctx.updateStatus("malformed cryptogram, unable to decrypt")
+				cg, _ := parseCryptogram(psdMsg)
+				dec, err := decryptPW([]byte(password), cg)
+				if err != nil {
+					ctx.updateStatus(err.Error())
+				} else {
+					ctx.notePad.SetText(string(*dec))
+				}
 			}
 		} else {
 			ctx.updateStatus("decryption cancelled")
@@ -113,25 +112,53 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		if result {
 			ctx.keytable.importKey(ctx, key)
 		} else {
-			ctx.updateStatus("Key generation cancelled")
+			ctx.updateStatus("key generation cancelled")
 		}
 	})
 
-	// Keygen
+	// Encrypt with EC public key
 	buttonList[5].SetTooltipMarkup("Encrypts data using a public key selected from the key table.")
 	buttonList[5].Connect("clicked", func() {
 		ctx.initialState = false
 		ctx.fileMode = false
-		key := ctx.loadedKey
-		if key != nil {
-			result := generateKeyPair(ctx, ctx.loadedKey)
-			if result {
-				ctx.keytable.importKey(ctx, *key)
+		if ctx.loadedKey != nil {
+			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), false)
+			textBytes := []byte(text)
+			ctx.toggleButtons(ctx.buttons, false)
+			//construct the key
+			pubX, _ := big.NewInt(0).SetString(ctx.loadedKey.PubKeyX, 10)
+			pubY, _ := big.NewInt(0).SetString(ctx.loadedKey.PubKeyY, 10)
+			key := NewE521XY(*pubX, *pubY)
+
+			result := encryptKey(key, &textBytes)
+			ctx.notePad.SetText(getSOAPMessage(hex.EncodeToString(*result), ctx))
+
+			ctx.toggleButtons(ctx.buttons, true)
+			ctx.updateStatus("encryption successful")
+		} else {
+			ctx.updateStatus("encryption cancelled")
+		}
+	})
+
+	// EC decryption. Searches keytable for corresponding private key.
+	buttonList[6].SetTooltipMarkup("Decrypts data using passphrase that corresponds to a valid private key.")
+	buttonList[6].Connect("clicked", func() {
+		ctx.initialState = false
+		ctx.fileMode = false
+		password, result := passwordEntryDialog(ctx.win, "decryption")
+		if result {
+			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+			text2, _ := parseSOAPMessage(&text)
+			psdMsg, err := parseCryptogram(text2)
+			if err != nil {
+				ctx.updateStatus(err.Error())
 			} else {
-				ctx.updateStatus("Key generation cancelled")
+				message, _ := decryptKey([]byte(password), psdMsg)
+				ctx.notePad.SetText(*message)
+				ctx.updateStatus("decryption successful")
 			}
 		} else {
-			ctx.updateStatus("No key selected")
+			ctx.updateStatus("decryption cancelled")
 		}
 	})
 	return &buttonList
