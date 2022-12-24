@@ -26,12 +26,17 @@ type Cryptogram struct {
 	T   []byte   // t is the authentication tag for the message
 }
 
-// Encodes a cryptogram to a byte array
-func (cg *Cryptogram) encodeCryptogram() (*[]byte, error) {
+type Signature struct {
+	H *big.Int
+	Z *big.Int
+}
+
+// Encodes arbitrary data into a byte array
+func encodeData(data interface{}) (*[]byte, error) {
 	var buf bytes.Buffer
 	// Create a new encoder and use it to encode the data
 	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(cg)
+	err := enc.Encode(data)
 	if err != nil {
 		return nil, errors.New("failed to encode cryptogram")
 	}
@@ -40,10 +45,21 @@ func (cg *Cryptogram) encodeCryptogram() (*[]byte, error) {
 }
 
 // Parses a cryptogram from a string
-func parseCryptogram(cg_dec *[]byte) (*Cryptogram, error) {
+func decodeCryptogram(cg_dec *[]byte) (*Cryptogram, error) {
 	buf := bytes.NewBuffer(*cg_dec)
 	dec := gob.NewDecoder(buf)
 	var p2 Cryptogram
+	if err := dec.Decode(&p2); err != nil {
+		return nil, errors.New("failed to decrypt")
+	}
+	return &p2, nil
+}
+
+// Parses a cryptogram from a string
+func decodeSignature(cg_dec *[]byte) (*Signature, error) {
+	buf := bytes.NewBuffer(*cg_dec)
+	dec := gob.NewDecoder(buf)
+	var p2 Signature
 	if err := dec.Decode(&p2); err != nil {
 		return nil, errors.New("failed to decrypt")
 	}
@@ -152,10 +168,8 @@ func encryptPW(pw []byte, msg *[]byte) *[]byte {
 	t := KMACXOF256(&ka, msg, 512, "SKA")
 
 	//construct a cryptogram
-	result0 := Cryptogram{
-		Z: z, C: c, T: t,
-	}
-	result, _ := result0.encodeCryptogram()
+	result0 := Cryptogram{Z: z, C: c, T: t}
+	result, _ := encodeData(&result0)
 	return result
 }
 
@@ -238,7 +252,8 @@ func encryptKey(pubKey *E521, message *[]byte) *[]byte {
 	c := XorBytes(KMACXOF256(&ke, &[]byte{}, len(*message)*8, "PKE"), *message)
 	t := KMACXOF256(&ka, message, 512, "PKA")
 	result0 := Cryptogram{Z_x: &Z.x, Z_y: &Z.y, C: c, T: t}
-	result, _ := result0.encodeCryptogram()
+	result, _ := encodeData(&result0)
+
 	return result
 }
 
@@ -280,3 +295,63 @@ func decryptKey(pw []byte, message *Cryptogram) (*string, error) {
 		return nil, errors.New("decryption failure")
 	}
 }
+
+/*
+Generates a signature for a byte array m under passphrase pw:
+
+	s <- KMACXOF256(pw, “”, 512, “K”); s <- 4s
+	k <- KMACXOF256(s, m, 512, “N”); k <- 4k
+	U <- k*G;
+	h <- KMACXOF256(U x , m, 512, “T”); z <- (k – hs) mod r
+
+return: signature: (h, z)
+*/
+func sign(pw []byte, message *[]byte) (*[]byte, error) {
+
+	s := new(big.Int).SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
+	s = new(big.Int).Mul(s, big.NewInt(4))
+	s = new(big.Int).Mod(s, &E521IdPoint().n)
+	s_bytes := s.Bytes()
+
+	k := new(big.Int).SetBytes(KMACXOF256(&s_bytes, message, 512, "N"))
+	k = new(big.Int).Mul(k, big.NewInt(4))
+	k = new(big.Int).Mod(k, &E521IdPoint().n)
+
+	U := E521GenPoint(0).SecMul(k)
+	uXBytes := U.x.Bytes()
+	h_temp := KMACXOF256(&uXBytes, message, 512, "T")
+
+	h_res := new(big.Int).SetBytes(h_temp)
+	z_res := new(big.Int).Sub(h_res, k.Mul(k, s))
+	z_res = new(big.Int).Mod(z_res, &E521IdPoint().r)
+
+	result0 := Signature{H: new(big.Int).SetBytes(h_temp), Z: z_res}
+	result, err := encodeData(&result0)
+
+	if err != nil {
+		return nil, errors.New("failed to encode signature")
+	} else {
+		return result, nil
+	}
+
+}
+
+/*
+*
+Verifies a signature (h, z) for a byte array m under the (Schnorr/
+ECDHIES) public key V:
+U <- z*G + h*V
+
+sig: signature: (h, z)
+pubKey: E521 key V used to sign message m
+return: true if, and only if, KMACXOF256(U x , m, 512, “T”) = h
+*/
+// func verify(pubkey *E521, sig *Signature) bool {
+
+// 	U := E521GenPoint(0).SecMul(sig.Z).Add(pubkey.SecMul(sig.H))
+// 	h_p := KMACXOF256(U.x, m, 512, "T")
+
+// 	return true
+// }
+
+//TODO include hash of message in sig object

@@ -24,8 +24,8 @@ type WindowCtx struct {
 	keytable     *KeyTable        // A table storing all imported keys
 	loadedKey    *KeyObj          // The key to be used for any asymmetric encryptions
 	fileMode     bool             // Determines whether to process a loaded file or notepad text
-	progressBar  *gtk.ProgressBar //A bar to display status of ongoing operations
-	buttons      *[]gtk.Button    //A list of pointers to all buttons added to the window
+	progressBar  *gtk.ProgressBar // A bar to display status of ongoing operations
+	buttons      *[]gtk.Button    // A list of pointers to all buttons added to the window
 }
 
 // Entry point
@@ -103,13 +103,13 @@ func setupWindow() *gtk.Window {
 }
 
 /*
- * The notepad is the primary location of interaction for the application.
- * A user can either enter text directly or drag and drop a file into the window
- * to perform cryptographic operations on the data. If the user edits the file details, the
- * session switches to text mode and any operations requested are performed over the notepad
- * text. Any UTF-8 characters can be processed by the notepad, including emojis and other
- * special symbols. The application is not tested on any language except english.
- */
+The notepad is the primary location of interaction for the application.
+A user can either enter text directly or drag and drop a file into the window
+to perform cryptographic operations on the data. If the user edits the file details, the
+session switches to text mode and any operations requested are performed over the notepad
+text. Any UTF-8 characters can be processed by the notepad, including emojis and other
+special symbols. The application is not tested on any language except english.
+*/
 func setupNotepad(ctxWin *WindowCtx) *gtk.TextBuffer {
 	scrollableTextArea, _ := gtk.ScrolledWindowNew(nil, nil)
 	buf, _ := gtk.TextBufferNew(nil)

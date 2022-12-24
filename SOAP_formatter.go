@@ -8,48 +8,56 @@ import (
 	"unicode/utf8"
 )
 
+const soapMessageBegin = "-----------BEGIN-SOAP-MESSAGE-----------\n"
+const soapMessageEnd = "------------END-SOAP-MESSAGE------------"
+const signatureBegin = "----------BEGIN-SOAP-SIGNATURE----------\n"
+const signatureEnd = "-----------END-SOAP-SIGNATURE-----------"
+
 // Formats a given message to SOAP format as specified in docs
-func getSOAPMessage(message string, ctx *WindowCtx) string {
+func getSOAP(message *string, ctx *WindowCtx, l1, l2 string) *string {
 
 	// string length
-	sl := utf8.RuneCountInString(message)
+	sl := utf8.RuneCountInString(*message)
 	// set line length
 	ll := 40
 
 	var sb strings.Builder
-	sb.Write([]byte("-----------BEGIN-SOAP-MESSAGE-----------\n"))
+	sb.Write([]byte(l1))
 	// Show a progress bar
 	ctx.updateStatus("Working...")
 	ctx.fixed.Put(ctx.progressBar, 245, 530)
 	ctx.progressBar.SetVisible(true)
 	ctx.progressBar.SetFraction(0)
 	// loop through string
-	for i := 0; i < len(message); i += ll {
+	for i := 0; i < len(*message); i += ll {
 		if !ctx.initialState {
 			// if line length is more than remaining characters
 			if i+ll > sl {
-				sb.Write([]byte(message[i:] + "\n"))
+				line := []byte((*message)[i:] + "\n")
+				sb.Write(line)
 			} else {
-				sb.Write([]byte(message[i:i+ll] + "\n"))
+				line := []byte((*message)[i:i+ll] + "\n")
+				sb.Write(line)
 			}
-			ctx.progressBar.SetFraction(float64(i) / float64(len(message)))
+			ctx.progressBar.SetFraction(float64(i) / float64(len(*message)))
 			refreshWindow()
 		} else {
 			ctx.Reset()
 			break
 		}
 	}
-	sb.Write([]byte("------------END-SOAP-MESSAGE------------"))
+	sb.Write([]byte(l2))
 	ctx.fixed.Remove(ctx.progressBar)
 	ctx.progressBar.SetVisible(false)
-	return sb.String()
+	res := sb.String()
+	return &res
 }
 
 // Parses a SOAP formatted string by removing header and footer and all newlines.
-func parseSOAPMessage(message *string) (*[]byte, error) {
+func parseSOAP(message *string, l1, l2 string) (*[]byte, error) {
 	lines := strings.Split(*message, "\n")
-	if lines[0] == "-----------BEGIN-SOAP-MESSAGE-----------" &&
-		lines[len(lines)-1] == "------------END-SOAP-MESSAGE------------" {
+	if lines[0]+"\n" == l1 &&
+		lines[len(lines)-1] == l2 {
 		str := strings.Join(lines[1:len(lines)-1], "\n")
 		regex := regexp.MustCompile(`[\r\n]+`)
 		strippedString := regex.ReplaceAllString(str, "")

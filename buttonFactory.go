@@ -69,7 +69,8 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			ctx.toggleButtons(ctx.buttons, false)
 			cg := encryptPW([]byte(password), &textBytes)
 			temp := hex.EncodeToString(*cg)
-			ctx.notePad.SetText(getSOAPMessage(temp, ctx))
+			res := getSOAP(&temp, ctx, soapMessageBegin, soapMessageEnd)
+			ctx.notePad.SetText(*res)
 			ctx.toggleButtons(ctx.buttons, true)
 			ctx.updateStatus("encryption successful")
 		} else {
@@ -85,16 +86,17 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		password, result := passwordEntryDialog(ctx.win, "decryption")
 		if result {
 			notePadText, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-			psdMsg, err1 := parseSOAPMessage(&notePadText)
+			psdMsg, err1 := parseSOAP(&notePadText, soapMessageBegin, soapMessageEnd)
 			if err1 != nil {
 				ctx.updateStatus("unable to decrypt")
 			} else {
-				cg, _ := parseCryptogram(psdMsg)
+				cg, _ := decodeCryptogram(psdMsg)
 				dec, err := decryptPW([]byte(password), cg)
 				if err != nil {
 					ctx.updateStatus(err.Error())
 				} else {
 					ctx.notePad.SetText(string(*dec))
+					ctx.updateStatus("decryption successful")
 				}
 			}
 		} else {
@@ -102,7 +104,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		}
 	})
 
-	//Keygen
+	//TODO currently is lame, way too much of this is in dialog. need to decouple
 	buttonList[4].SetTooltipMarkup("Generates a Schnorr E521 keypair from supplied password.")
 	buttonList[4].Connect("clicked", func() {
 		ctx.initialState = false
@@ -130,8 +132,9 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			pubY, _ := big.NewInt(0).SetString(ctx.loadedKey.PubKeyY, 10)
 			key := NewE521XY(*pubX, *pubY)
 
-			result := encryptKey(key, &textBytes)
-			ctx.notePad.SetText(getSOAPMessage(hex.EncodeToString(*result), ctx))
+			result := hex.EncodeToString(*encryptKey(key, &textBytes))
+			res := getSOAP(&result, ctx, soapMessageBegin, soapMessageEnd)
+			ctx.notePad.SetText(*res)
 
 			ctx.toggleButtons(ctx.buttons, true)
 			ctx.updateStatus("encryption successful")
@@ -148,18 +151,54 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		password, result := passwordEntryDialog(ctx.win, "decryption")
 		if result {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-			text2, _ := parseSOAPMessage(&text)
-			psdMsg, err := parseCryptogram(text2)
+			text2, err := parseSOAP(&text, soapMessageBegin, soapMessageEnd)
 			if err != nil {
 				ctx.updateStatus(err.Error())
 			} else {
-				message, _ := decryptKey([]byte(password), psdMsg)
-				ctx.notePad.SetText(*message)
-				ctx.updateStatus("decryption successful")
+				psdMsg, err := decodeCryptogram(text2)
+				if err != nil {
+					ctx.updateStatus(err.Error())
+				} else {
+					message, _ := decryptKey([]byte(password), psdMsg)
+					ctx.notePad.SetText(*message)
+					ctx.updateStatus("decryption successful")
+				}
+
 			}
 		} else {
 			ctx.updateStatus("decryption cancelled")
 		}
+	})
+
+	buttonList[7].SetTooltipMarkup("Signs a message with a selected key.")
+	buttonList[7].Connect("clicked", func() {
+		ctx.initialState = false
+		ctx.fileMode = false
+		password, result := passwordEntryDialog(ctx.win, "signature")
+		if result {
+			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+			textBytes := []byte(text)
+			signature, err := sign([]byte(password), &textBytes)
+
+			if err != nil {
+				ctx.updateStatus(err.Error())
+			} else {
+				sigHexString := hex.EncodeToString(*signature)
+				text2 := getSOAP(&sigHexString, ctx, signatureBegin, signatureEnd)
+				ctx.notePad.SetText(*text2)
+				ctx.updateStatus("signature generated")
+			}
+
+		} else {
+			ctx.updateStatus("signature cancelled")
+		}
+	})
+
+	buttonList[8].SetTooltipMarkup("Verifies a signature against a public key.")
+	buttonList[8].Connect("clicked", func() {
+		ctx.initialState = false
+		ctx.fileMode = false
+
 	})
 	return &buttonList
 }
