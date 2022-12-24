@@ -19,7 +19,7 @@ func getSOAP(message *string, ctx *WindowCtx, l1, l2 string) *string {
 	// string length
 	sl := utf8.RuneCountInString(*message)
 	// set line length
-	ll := 40
+	lineLength := 40
 
 	var sb strings.Builder
 	sb.Write([]byte(l1))
@@ -29,14 +29,14 @@ func getSOAP(message *string, ctx *WindowCtx, l1, l2 string) *string {
 	ctx.progressBar.SetVisible(true)
 	ctx.progressBar.SetFraction(0)
 	// loop through string
-	for i := 0; i < len(*message); i += ll {
+	for i := 0; i < len(*message); i += lineLength {
 		if !ctx.initialState {
 			// if line length is more than remaining characters
-			if i+ll > sl {
+			if i+lineLength > sl {
 				line := []byte((*message)[i:] + "\n")
 				sb.Write(line)
 			} else {
-				line := []byte((*message)[i:i+ll] + "\n")
+				line := []byte((*message)[i:i+lineLength] + "\n")
 				sb.Write(line)
 			}
 			ctx.progressBar.SetFraction(float64(i) / float64(len(*message)))
@@ -64,6 +64,6 @@ func parseSOAP(message *string, l1, l2 string) (*[]byte, error) {
 		res, _ := hex.DecodeString(strippedString)
 		return &res, nil
 	} else {
-		return nil, errors.New("malformed cryptogram, unable to decrypt")
+		return nil, errors.New("malformed text, unable to parse")
 	}
 }

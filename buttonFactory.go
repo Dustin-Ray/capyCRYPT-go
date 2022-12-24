@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/big"
 
 	"github.com/gotk3/gotk3/gtk"
@@ -67,7 +68,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), false)
 			textBytes := []byte(text)
 			ctx.toggleButtons(ctx.buttons, false)
-			cg := encryptPW([]byte(password), &textBytes)
+			cg := encryptWithPW([]byte(password), &textBytes)
 			temp := hex.EncodeToString(*cg)
 			res := getSOAP(&temp, ctx, soapMessageBegin, soapMessageEnd)
 			ctx.notePad.SetText(*res)
@@ -91,7 +92,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 				ctx.updateStatus("unable to decrypt")
 			} else {
 				cg, _ := decodeCryptogram(psdMsg)
-				dec, err := decryptPW([]byte(password), cg)
+				dec, err := decryptWithPW([]byte(password), cg)
 				if err != nil {
 					ctx.updateStatus(err.Error())
 				} else {
@@ -132,7 +133,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			pubY, _ := big.NewInt(0).SetString(ctx.loadedKey.PubKeyY, 10)
 			key := NewE521XY(*pubX, *pubY)
 
-			result := hex.EncodeToString(*encryptKey(key, &textBytes))
+			result := hex.EncodeToString(*encryptWithKey(key, &textBytes))
 			res := getSOAP(&result, ctx, soapMessageBegin, soapMessageEnd)
 			ctx.notePad.SetText(*res)
 
@@ -159,7 +160,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 				if err != nil {
 					ctx.updateStatus(err.Error())
 				} else {
-					message, _ := decryptKey([]byte(password), psdMsg)
+					message, _ := encryptWithPassword([]byte(password), psdMsg)
 					ctx.notePad.SetText(*message)
 					ctx.updateStatus("decryption successful")
 				}
@@ -178,7 +179,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		if result {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
 			textBytes := []byte(text)
-			signature, err := sign([]byte(password), &textBytes)
+			signature, err := signWithKey([]byte(password), &textBytes)
 
 			if err != nil {
 				ctx.updateStatus(err.Error())
@@ -199,12 +200,31 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		ctx.initialState = false
 		ctx.fileMode = false
 
+		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
+		textBytes := []byte(text)
+		if ctx.loadedKey != nil {
+			pubKeyObj := ctx.loadedKey
+			keyX, _ := big.NewInt(0).SetString(pubKeyObj.PubKeyX, 10)
+			keyY, _ := big.NewInt(0).SetString(pubKeyObj.PubKeyY, 10)
+
+			key := NewE521XY(*keyX, *keyY)
+			signatureBytes, err := parseSOAP(&text, signatureBegin, signatureEnd)
+			signature, err2 := decodeSignature(signatureBytes)
+
+			if err != nil || err2 != nil {
+				fmt.Println("error")
+			} else {
+				fmt.Println(verify(key, signature, &textBytes))
+			}
+		} else {
+			ctx.updateStatus("no key selected")
+		}
 	})
 	return &buttonList
 }
 
 // Disables buttons while operation is being performed, reenables buttons when finished.
-// Reset toggles buttons on
+// Reset toggles buttons to enabled
 func (ctx *WindowCtx) toggleButtons(buttonList *[]gtk.Button, setting bool) {
 	for _, button := range *buttonList {
 		button.SetSensitive(setting)

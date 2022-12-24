@@ -9,7 +9,58 @@ import (
 
 func runtests() {
 
-	testEncDec()
+	testSig()
+
+}
+
+func testSig() {
+
+	message := []byte("test")
+	pw := []byte("password")
+
+	s := new(big.Int).SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
+	s = s.Mul(s, big.NewInt(4))
+	s = s.Mod(s, &E521IdPoint().n)
+
+	V := *E521GenPoint(0)
+	V = *V.SecMul(s)
+
+	//get signing key for messsage under password
+	k := new(big.Int).SetBytes(KMACXOF256(&pw, &message, 512, "N"))
+	k = new(big.Int).Mul(k, big.NewInt(4))
+	k = new(big.Int).Mod(k, &E521IdPoint().n)
+
+	//create public signing key for message
+	U := E521GenPoint(0).SecMul(k)
+	fmt.Println(U.x)
+	uXBytes := U.x.Bytes()
+
+	//get the tag for the message key
+	h := KMACXOF256(&uXBytes, &message, 512, "T")
+
+	//create public nonce for signature
+	h_bigInt := new(big.Int).SetBytes(h)
+	z := new(big.Int).Sub(h_bigInt, k.Mul(k, s))
+	z = new(big.Int).Mod(z, &E521IdPoint().r)
+
+	// z = (k - hs) mod r
+	result0 := Signature{H: new(big.Int).Abs(h_bigInt), Z: z}
+	// result, err := encodeSignature(&result0)
+
+	U2 := E521GenPoint(0).SecMul(result0.Z).Add(V.SecMul(result0.H))
+	keyBytes := U2.x.Bytes()
+	h_p := KMACXOF256(&keyBytes, &message, 512, "T")
+	h2 := new(big.Int).SetBytes(h_p)
+	h2 = new(big.Int).Abs(h2)
+	if h2 == new(big.Int).SetBytes(h_p) {
+		fmt.Println("success")
+	}
+
+	// if err != nil {
+	// 	fmt.Println("failed to encode signature")
+	// } else {
+	// 	// fmt.Println(result)
+	// }
 
 }
 
@@ -25,7 +76,7 @@ func testEncDec() {
 
 	key = key.SecMul(pw)
 	message := []byte("test message")
-	cgEnc := encryptKey(key, &message)
+	cgEnc := encryptWithKey(key, &message)
 	// Create a buffer to write the data to
 	var buf bytes.Buffer
 
@@ -56,7 +107,7 @@ func testEncDec() {
 
 		// fmt.Println(BytesToHexString(*test2.toBytes()))
 
-		_, err := decryptKey(pw_string, &p2)
+		_, err := encryptWithPassword(pw_string, &p2)
 		if err != nil {
 			fmt.Println("failed")
 			break

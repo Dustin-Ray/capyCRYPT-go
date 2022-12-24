@@ -2,19 +2,19 @@ package main
 
 /**
 Implements SHA3XOF functionality as defined in FIPS PUP 202 and NIST SP 800-105.
-Inspiration:
-https://github.com/mjosaarinen/tiny_sha3
-https://keccak.team/keccak_specs_summary.html
-https://github.com/NWc0de/KeccakUtils
+	Inspiration:
+	https://github.com/mjosaarinen/tiny_sha3
+	https://keccak.team/keccak_specs_summary.html
+	https://github.com/NWc0de/KeccakUtils
 Dustin Ray
 version 0.1
 */
 
 import (
 	"bytes"
-	"encoding/gob"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 )
 
@@ -27,43 +27,9 @@ type Cryptogram struct {
 }
 
 type Signature struct {
-	H *big.Int
-	Z *big.Int
-}
-
-// Encodes arbitrary data into a byte array
-func encodeData(data interface{}) (*[]byte, error) {
-	var buf bytes.Buffer
-	// Create a new encoder and use it to encode the data
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(data)
-	if err != nil {
-		return nil, errors.New("failed to encode cryptogram")
-	}
-	result := buf.Bytes()
-	return &result, nil
-}
-
-// Parses a cryptogram from a string
-func decodeCryptogram(cg_dec *[]byte) (*Cryptogram, error) {
-	buf := bytes.NewBuffer(*cg_dec)
-	dec := gob.NewDecoder(buf)
-	var p2 Cryptogram
-	if err := dec.Decode(&p2); err != nil {
-		return nil, errors.New("failed to decrypt")
-	}
-	return &p2, nil
-}
-
-// Parses a cryptogram from a string
-func decodeSignature(cg_dec *[]byte) (*Signature, error) {
-	buf := bytes.NewBuffer(*cg_dec)
-	dec := gob.NewDecoder(buf)
-	var p2 Signature
-	if err := dec.Decode(&p2); err != nil {
-		return nil, errors.New("failed to decrypt")
-	}
-	return &p2, nil
+	msgHash []byte
+	H       *big.Int
+	Z       *big.Int
 }
 
 /*
@@ -156,7 +122,7 @@ Encrypts a byte array m symmetrically under passphrase pw:
 	message: message to encrypt
 	return: symmetric cryptogram: (z, c, t)
 */
-func encryptPW(pw []byte, msg *[]byte) *[]byte {
+func encryptWithPW(pw []byte, msg *[]byte) *[]byte {
 
 	z := generateRandomBytes(64)
 	tempKeka := append(z, []byte(pw)...)
@@ -185,7 +151,7 @@ Decrypts a symmetric cryptogram (z, c, t) under passphrase pw
 	pw: decryption password, can be blank
 	return: m, if and only if t` = t
 */
-func decryptPW(pw []byte, cg *Cryptogram) (*[]byte, error) {
+func decryptWithPW(pw []byte, cg *Cryptogram) (*[]byte, error) {
 
 	z := cg.Z
 	c := cg.C
@@ -233,7 +199,7 @@ exchanged with recipient. SECURITY NOTE: ciphertext length == plaintext length
 	message: message of any length or format to encrypt
 	return cryptogram: (Z, c, t) = Z||c||t
 */
-func encryptKey(pubKey *E521, message *[]byte) *[]byte {
+func encryptWithKey(pubKey *E521, message *[]byte) *[]byte {
 
 	k := big.NewInt(0)
 	k = k.SetBytes(generateRandomBytes(64))
@@ -271,7 +237,7 @@ derived from Z.
 	@param message cryptogram of format Z||c||t
 	@return Decryption of cryptogram Z||c||t iff t` = t
 */
-func decryptKey(pw []byte, message *Cryptogram) (*string, error) {
+func encryptWithPassword(pw []byte, message *Cryptogram) (*string, error) {
 
 	Z := NewE521XY(*message.Z_x, *message.Z_y)
 
@@ -306,34 +272,41 @@ Generates a signature for a byte array m under passphrase pw:
 
 return: signature: (h, z)
 */
-func sign(pw []byte, message *[]byte) (*[]byte, error) {
+func signWithKey(pw []byte, message *[]byte) (*[]byte, error) {
 
+	//get hash of pw
 	s := new(big.Int).SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
 	s = new(big.Int).Mul(s, big.NewInt(4))
 	s = new(big.Int).Mod(s, &E521IdPoint().n)
 	s_bytes := s.Bytes()
 
+	//get signing key for messsage under password
 	k := new(big.Int).SetBytes(KMACXOF256(&s_bytes, message, 512, "N"))
 	k = new(big.Int).Mul(k, big.NewInt(4))
 	k = new(big.Int).Mod(k, &E521IdPoint().n)
 
+	//create public signing key for message
 	U := E521GenPoint(0).SecMul(k)
+	fmt.Println(U.x)
 	uXBytes := U.x.Bytes()
-	h_temp := KMACXOF256(&uXBytes, message, 512, "T")
 
-	h_res := new(big.Int).SetBytes(h_temp)
-	z_res := new(big.Int).Sub(h_res, k.Mul(k, s))
-	z_res = new(big.Int).Mod(z_res, &E521IdPoint().r)
+	//get the tag for the message key
+	h := KMACXOF256(&uXBytes, message, 512, "T")
 
-	result0 := Signature{H: new(big.Int).SetBytes(h_temp), Z: z_res}
-	result, err := encodeData(&result0)
+	//create public nonce for signature
+	h_bigInt := new(big.Int).SetBytes(h)
+	z := new(big.Int).Sub(h_bigInt, k.Mul(k, s))
+	z = new(big.Int).Mod(z, &E521IdPoint().r)
+
+	// z = (k - hs) mod r
+	result0 := Signature{H: new(big.Int).Abs(h_bigInt), Z: z}
+	result, err := encodeSignature(&result0)
 
 	if err != nil {
 		return nil, errors.New("failed to encode signature")
 	} else {
 		return result, nil
 	}
-
 }
 
 /*
@@ -346,12 +319,18 @@ sig: signature: (h, z)
 pubKey: E521 key V used to sign message m
 return: true if, and only if, KMACXOF256(U x , m, 512, “T”) = h
 */
-// func verify(pubkey *E521, sig *Signature) bool {
+func verify(pubkey *E521, sig *Signature, msg *[]byte) bool {
 
-// 	U := E521GenPoint(0).SecMul(sig.Z).Add(pubkey.SecMul(sig.H))
-// 	h_p := KMACXOF256(U.x, m, 512, "T")
-
-// 	return true
-// }
+	U := E521GenPoint(0).SecMul(sig.Z).Add(pubkey.SecMul(sig.H))
+	keyBytes := U.x.Bytes()
+	h_p := KMACXOF256(&keyBytes, msg, 512, "T")
+	h := new(big.Int).SetBytes(h_p)
+	h = new(big.Int).Abs(h)
+	if h == new(big.Int).SetBytes(h_p) {
+		return true
+	} else {
+		return false
+	}
+}
 
 //TODO include hash of message in sig object

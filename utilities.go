@@ -7,9 +7,12 @@ and reduce GUI bloat.
 */
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/gob"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -183,4 +186,52 @@ func (ctx *WindowCtx) Reset() {
 	setupKeyTable(ctx)
 	ctx.status.SetText("Status: Ready")
 	ctx.win.ShowAll()
+}
+
+// Encodes arbitrary data into a byte array
+func encodeData(data *Cryptogram) (*[]byte, error) {
+	var buf bytes.Buffer
+	// Create a new encoder and use it to encode the data
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(data)
+	if err != nil {
+		return nil, errors.New("failed to encode cryptogram")
+	}
+	result := buf.Bytes()
+	return &result, nil
+}
+
+// Encodes arbitrary data into a byte array
+func encodeSignature(data *Signature) (*[]byte, error) {
+	var buf bytes.Buffer
+	// Create a new encoder and use it to encode the data
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(data)
+	if err != nil {
+		return nil, errors.New("failed to encode cryptogram")
+	}
+	result := buf.Bytes()
+	return &result, nil
+}
+
+// Parses a cryptogram from a string
+func decodeCryptogram(cg_dec *[]byte) (*Cryptogram, error) {
+	buf := bytes.NewBuffer(*cg_dec)
+	dec := gob.NewDecoder(buf)
+	var p2 Cryptogram
+	if err := dec.Decode(&p2); err != nil {
+		return nil, errors.New("failed to decrypt")
+	}
+	return &p2, nil
+}
+
+// Parses a cryptogram from a string
+func decodeSignature(cg_dec *[]byte) (*Signature, error) {
+	buf := bytes.NewBuffer(*cg_dec)
+	dec := gob.NewDecoder(buf)
+	var p2 Signature
+	if err := dec.Decode(&p2); err != nil {
+		return nil, errors.New("failed to decrypt")
+	}
+	return &p2, nil
 }
