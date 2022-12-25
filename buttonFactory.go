@@ -110,12 +110,10 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		ctx.initialState = false
 		ctx.fileMode = false
 		key := KeyObj{}
-		result := generateKeyPair(ctx, &key)
-		if result {
-			ctx.keytable.importKey(ctx, key)
-		} else {
-			ctx.updateStatus("key generation cancelled")
-		}
+		constructKey(ctx, &key)
+		ctx.keytable.importKey(ctx, key)
+		ctx.updateStatus("key generation cancelled")
+
 	})
 
 	// Encrypt with EC public key
@@ -211,7 +209,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 				} else {
 					result := verify(key, signature, &signature.M)
 					if result {
-						ctx.updateStatus("good signature from " + ctx.loadedKey.Id)
+						ctx.updateStatus("good signature from key " + ctx.loadedKey.Id)
 					} else {
 						ctx.updateStatus("unable to verify signature")
 					}

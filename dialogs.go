@@ -129,7 +129,7 @@ func constructKey(ctx *WindowCtx, key *KeyObj) bool {
 		if matched {
 			ot, _ := owner.GetText()
 			password2, _ := confirm.GetText()
-			setKeyData(key, password2, ot)
+			generateKeyPair(key, password2, ot)
 			dialog.Destroy()
 			return true
 		}
@@ -186,8 +186,8 @@ func showKeyDetails(ctx *WindowCtx) {
 	PubKeyX, _ := gtk.LabelNew("PUB KEY X: ")
 	PubKeyY, _ := gtk.LabelNew("PUB KEY Y: ")
 	PrivKey, _ := gtk.LabelNew("PRIV KEY: ")
-
 	DateCreated, _ := gtk.LabelNew("DATE CREATED: " + key.DateCreated)
+	KeySig, _ := gtk.LabelNew("KEY SIG: ")
 
 	dialog.Add(fixed)
 	fixed.Put(ID, 25, 25)
@@ -206,6 +206,10 @@ func showKeyDetails(ctx *WindowCtx) {
 	fixed.Put(PrivKey, 25, 270)
 	fixed.Put(&privKeyWindow, 25, 295)
 
+	sigWindow := getScrollableTextArea(ctx, ctx.loadedKey.Signature)
+	fixed.Put(KeySig, 250, 270)
+	fixed.Put(&sigWindow, 250, 295)
+
 	fixed.Put(DateCreated, 25, 425)
 
 	ID.SetSelectable(true)
@@ -213,6 +217,7 @@ func showKeyDetails(ctx *WindowCtx) {
 	KEYTYPE.SetSelectable(true)
 	PrivKey.SetSelectable(true)
 	DateCreated.SetSelectable(true)
+	KeySig.SetSelectable(true)
 
 	dialog.ShowAll()
 }
@@ -318,7 +323,6 @@ func showRestWarningDialog(ctx *WindowCtx) {
 
 // Prevents GUI from freezing and updates progress bar
 func refreshWindow() {
-
 	for {
 		if gtk.EventsPending() {
 			gtk.MainIterationDo(false)
@@ -326,5 +330,4 @@ func refreshWindow() {
 			break
 		}
 	}
-
 }

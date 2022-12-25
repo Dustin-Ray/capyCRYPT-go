@@ -8,10 +8,13 @@ import (
 	"unicode/utf8"
 )
 
-const soapMessageBegin = "-----------BEGIN-SOAP-MESSAGE-----------\n"
-const soapMessageEnd = "------------END-SOAP-MESSAGE------------"
-const signatureBegin = "----------BEGIN-SOAP-SIGNATURE----------\n"
-const signatureEnd = "-----------END-SOAP-SIGNATURE-----------"
+// refactor
+const (
+	soapMessageBegin = "-----------BEGIN-SOAP-MESSAGE-----------\n"
+	soapMessageEnd   = "------------END-SOAP-MESSAGE------------"
+	signatureBegin   = "----------BEGIN-SOAP-SIGNATURE----------\n"
+	signatureEnd     = "-----------END-SOAP-SIGNATURE-----------"
+)
 
 // Formats a given message to SOAP format as specified in docs
 func getSOAP(message *string, ctx *WindowCtx, l1, l2 string) *string {

@@ -14,8 +14,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
-	"time"
 
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/lukechampine/fastxor"
@@ -99,23 +97,6 @@ func XorBytes(a, b []byte) []byte {
 	dst := make([]byte, len(a))
 	fastxor.Bytes(dst, a, b)
 	return dst
-}
-
-// Called to generate a key from collected user input
-func setKeyData(key *KeyObj, password2 string, owner string) {
-	temp := []byte(password2)
-	s := new(big.Int).SetBytes(KMACXOF256(&temp, &[]byte{}, 512, "K"))
-	s = s.Mul(s, big.NewInt(4))
-	s = s.Mod(s, &E521IdPoint().n)
-
-	V := *E521GenPoint(0)
-	V = *V.SecMul(s)
-	key.Owner = owner
-	key.PrivKey = s.String()
-	key.PubKeyX = V.x.String()
-	key.PubKeyY = V.y.String()
-	key.DateCreated = time.Now().Format(time.RFC1123)
-	key.Signature = "test"
 }
 
 // function to check if pwds match

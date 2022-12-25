@@ -14,8 +14,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"math/big"
+	"time"
 )
 
 type Cryptogram struct {
@@ -181,8 +181,23 @@ Generates a (Schnorr/ECDHIES) key pair from passphrase pw:
 key pair: (s, V)
 key: a pointer to an empty KeyObj to be populated with user data
 */
-func generateKeyPair(ctx *WindowCtx, key *KeyObj) bool {
-	return constructKey(ctx, key)
+func generateKeyPair(key *KeyObj, password, owner string) {
+	pwBytes := []byte(password)
+	s := new(big.Int).SetBytes(KMACXOF256(&pwBytes, &[]byte{}, 512, "K"))
+	s = s.Mul(s, big.NewInt(4))
+	s = s.Mod(s, &E521IdPoint().n)
+
+	V := *E521GenPoint(0).SecMul(s)
+	key.Owner = owner
+	key.PrivKey = s.String()
+	key.PubKeyX = V.x.String()
+	key.PubKeyY = V.y.String()
+	key.DateCreated = time.Now().Format(time.RFC1123)
+	sigString := []byte(key.Owner + key.PubKeyX + key.PubKeyY + key.DateCreated)
+	signed, _ := signWithKey(pwBytes, &sigString)
+	sigHash := KMACXOF256(&pwBytes, signed, 512, "SIG")
+	key.Signature = hex.EncodeToString(sigHash)
+
 }
 
 /*
@@ -318,8 +333,6 @@ func verify(pubkey *E521, sig *Signature, message *[]byte) bool {
 	UXbytes := U2.x.Bytes()
 	h_p := KMACXOF256(&UXbytes, message, 512, "T")
 	h2 := new(big.Int).SetBytes(h_p)
-	fmt.Println("H: ", h2)
-	fmt.Println("sig.H: ", sig.H)
 	if h2.Cmp(sig.H) != 0 {
 		return false
 	} else {
