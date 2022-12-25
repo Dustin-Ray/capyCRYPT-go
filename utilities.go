@@ -170,7 +170,20 @@ func (ctx *WindowCtx) Reset() {
 }
 
 // Encodes arbitrary data into a byte array
-func encodeData(data *Cryptogram) (*[]byte, error) {
+func encodeSymmetricCryptogram(data *SymCryptogram) (*[]byte, error) {
+	var buf bytes.Buffer
+	// Create a new encoder and use it to encode the data
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(data)
+	if err != nil {
+		return nil, errors.New("failed to encode cryptogram")
+	}
+	result := buf.Bytes()
+	return &result, nil
+}
+
+// Encodes arbitrary data into a byte array
+func encodeECCryptogram(data *ECCryptogram) (*[]byte, error) {
 	var buf bytes.Buffer
 	// Create a new encoder and use it to encode the data
 	enc := gob.NewEncoder(&buf)
@@ -196,10 +209,21 @@ func encodeSignature(data *Signature) (*[]byte, error) {
 }
 
 // Parses a cryptogram from a string
-func decodeCryptogram(cg_dec *[]byte) (*Cryptogram, error) {
+func decodeSymCryptogram(cg_dec *[]byte) (*SymCryptogram, error) {
 	buf := bytes.NewBuffer(*cg_dec)
 	dec := gob.NewDecoder(buf)
-	var p2 Cryptogram
+	var p2 SymCryptogram
+	if err := dec.Decode(&p2); err != nil {
+		return nil, errors.New("failed to decrypt")
+	}
+	return &p2, nil
+}
+
+// Parses a cryptogram from a string
+func decodeECCryptogram(cg_dec *[]byte) (*ECCryptogram, error) {
+	buf := bytes.NewBuffer(*cg_dec)
+	dec := gob.NewDecoder(buf)
+	var p2 ECCryptogram
 	if err := dec.Decode(&p2); err != nil {
 		return nil, errors.New("failed to decrypt")
 	}

@@ -90,7 +90,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			if err1 != nil {
 				ctx.updateStatus("unable to decrypt")
 			} else {
-				cg, _ := decodeCryptogram(psdMsg)
+				cg, _ := decodeSymCryptogram(psdMsg)
 				dec, err := decryptWithPW([]byte(password), cg)
 				if err != nil {
 					ctx.updateStatus(err.Error())
@@ -141,7 +141,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		}
 	})
 
-	// EC decryption. Searches keytable for corresponding private key.
+	// EC decryption. TODO Searches keytable for corresponding private key.
 	buttonList[6].SetTooltipMarkup("Decrypts data using passphrase that corresponds to a valid private key.")
 	buttonList[6].Connect("clicked", func() {
 		ctx.initialState = false
@@ -153,13 +153,17 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			if err != nil {
 				ctx.updateStatus(err.Error())
 			} else {
-				psdMsg, err := decodeCryptogram(text2)
+				psdMsg, err := decodeECCryptogram(text2)
 				if err != nil {
 					ctx.updateStatus(err.Error())
 				} else {
-					message, _ := encryptWithPassword([]byte(password), psdMsg)
-					ctx.notePad.SetText(*message)
-					ctx.updateStatus("decryption successful")
+					message, err := decryptWithKey([]byte(password), psdMsg)
+					if err != nil {
+						ctx.updateStatus(err.Error())
+					} else {
+						ctx.notePad.SetText(*message)
+						ctx.updateStatus("decryption successful")
+					}
 				}
 			}
 		} else {

@@ -18,12 +18,18 @@ import (
 	"time"
 )
 
-type Cryptogram struct {
-	Z_x *big.Int // Z_x is the x coordinate of the public nonce
-	Z_y *big.Int // Z_y is the y coordinate of the public nonce
-	Z   []byte   // optional Z public nonce for symmetric operations
-	C   []byte   // c represents the ciphertext of an encryption
-	T   []byte   // t is the authentication tag for the message
+type SymCryptogram struct {
+	Z []byte // optional Z public nonce for symmetric operations
+	C []byte // c represents the ciphertext of an encryption
+	T []byte // t is the authentication tag for the message
+}
+
+type ECCryptogram struct {
+	Z_x big.Int // Z_x is the x coordinate of the public nonce
+	Z_y big.Int // Z_y is the y coordinate of the public nonce
+	Z   []byte  // optional Z public nonce for symmetric operations
+	C   []byte  // c represents the ciphertext of an encryption
+	T   []byte  // t is the authentication tag for the message
 }
 
 type Signature struct {
@@ -134,8 +140,8 @@ func encryptWithPW(pw []byte, msg *[]byte) *[]byte {
 	t := KMACXOF256(&ka, msg, 512, "SKA")
 
 	//construct a cryptogram
-	result0 := Cryptogram{Z: z, C: c, T: t}
-	result, _ := encodeData(&result0)
+	result0 := SymCryptogram{Z: z, C: c, T: t}
+	result, _ := encodeSymmetricCryptogram(&result0)
 	return result
 }
 
@@ -151,7 +157,7 @@ Decrypts a symmetric cryptogram (z, c, t) under passphrase pw
 	pw: decryption password, can be blank
 	return: m, if and only if t` = t
 */
-func decryptWithPW(pw []byte, cg *Cryptogram) (*[]byte, error) {
+func decryptWithPW(pw []byte, cg *SymCryptogram) (*[]byte, error) {
 
 	z := cg.Z
 	c := cg.C
@@ -178,8 +184,8 @@ Generates a (Schnorr/ECDHIES) key pair from passphrase pw:
 	s <- KMACXOF256(pw, “”, 512, “K”); s <- 4s
 	V <- s*G
 
-key pair: (s, V)
-key: a pointer to an empty KeyObj to be populated with user data
+	key pair: (s, V)
+	key: a pointer to an empty KeyObj to be populated with user data
 */
 func generateKeyPair(key *KeyObj, password, owner string) {
 	pwBytes := []byte(password)
@@ -212,12 +218,11 @@ exchanged with recipient. SECURITY NOTE: ciphertext length == plaintext length
 	t <- KMACXOF256(ka, m, 512, “PKA”)
 	pubKey: X coordinate of public static key V, accepted as string
 	message: message of any length or format to encrypt
-	return cryptogram: (Z, c, t) = Z||c||t
+	return: cryptogram: (Z, c, t) = Z||c||t
 */
 func encryptWithKey(pubKey *E521, message *[]byte) *[]byte {
 
-	k := big.NewInt(0)
-	k = k.SetBytes(generateRandomBytes(64))
+	k := big.NewInt(0).SetBytes(generateRandomBytes(64))
 	k = k.Mul(k, big.NewInt(4))
 	k = k.Mod(k, &pubKey.n)
 
@@ -232,10 +237,10 @@ func encryptWithKey(pubKey *E521, message *[]byte) *[]byte {
 
 	c := XorBytes(KMACXOF256(&ke, &[]byte{}, len(*message)*8, "PKE"), *message)
 	t := KMACXOF256(&ka, message, 512, "PKA")
-	result0 := Cryptogram{Z_x: &Z.x, Z_y: &Z.y, C: c, T: t}
-	result, _ := encodeData(&result0)
+	cryptogram := ECCryptogram{Z_x: Z.x, Z_y: Z.y, C: c, T: t}
+	encoded, _ := encodeECCryptogram(&cryptogram)
 
-	return result
+	return encoded
 }
 
 /*
@@ -248,16 +253,15 @@ derived from Z.
 	(ke || ka) <- KMACXOF256(W x , “”, 1024, “P”)
 	m <- KMACXOF256(ke, “”, |c|, “PKE”) XOR c
 	t’ <- KMACXOF256(ka, m, 512, “PKA”)
-	@param pw password used to generate E521 encryption key.
-	@param message cryptogram of format Z||c||t
-	@return Decryption of cryptogram Z||c||t iff t` = t
+	pw: password used to generate E521 encryption key.
+	message: cryptogram of format Z||c||t
+	return: Decryption of cryptogram Z||c||t iff t` = t
 */
-func encryptWithPassword(pw []byte, message *Cryptogram) (*string, error) {
+func decryptWithKey(pw []byte, message *ECCryptogram) (*string, error) {
 
-	Z := NewE521XY(*message.Z_x, *message.Z_y)
+	Z := NewE521XY(message.Z_x, message.Z_y)
 
-	s := big.NewInt(0)
-	s = s.SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
+	s := big.NewInt(0).SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
 	s = s.Mul(s, big.NewInt(4))
 	s = s.Mod(s, &Z.n)
 
@@ -285,7 +289,7 @@ Generates a signature for a byte array m under passphrase pw:
 	U <- k*G;
 	h <- KMACXOF256(U x , m, 512, “T”); z <- (k – hs) mod r
 
-return: signature: (h, z)
+	return: signature: (h, z)
 */
 func signWithKey(pw []byte, message *[]byte) (*[]byte, error) {
 
@@ -318,14 +322,13 @@ func signWithKey(pw []byte, message *[]byte) (*[]byte, error) {
 }
 
 /*
-*
 Verifies a signature (h, z) for a byte array m under the (Schnorr/
 ECDHIES) public key V:
-U <- z*G + h*V
 
-sig: signature: (h, z)
-pubKey: E521 key V used to sign message m
-return: true if, and only if, KMACXOF256(U x , m, 512, “T”) = h
+	U <- z*G + h*V
+	sig: signature: (h, z)
+	pubKey: E521 key V used to sign message m
+	return: true if, and only if, KMACXOF256(U x , m, 512, “T”) = h
 */
 func verify(pubkey *E521, sig *Signature, message *[]byte) bool {
 

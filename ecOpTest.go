@@ -85,7 +85,7 @@ func testEncDec() {
 	data := buf.Bytes()
 	fmt.Println("Array of bytes:", data)
 	dec := gob.NewDecoder(&buf)
-	var p2 Cryptogram
+	var p2 ECCryptogram
 	if err := dec.Decode(&p2); err != nil {
 		fmt.Println(err)
 		return
@@ -95,7 +95,7 @@ func testEncDec() {
 	fmt.Println("working")
 	for i := 0; i < 1; i++ {
 		// fmt.Println(BytesToHexString(*test2.toBytes()))
-		_, err := encryptWithPassword(pw_string, &p2)
+		_, err := decryptWithKey(pw_string, &p2)
 		if err != nil {
 			fmt.Println("failed")
 			break
