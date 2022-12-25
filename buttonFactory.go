@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/hex"
-	"fmt"
 	"math/big"
 
 	"github.com/gotk3/gotk3/gtk"
@@ -150,7 +149,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		ctx.initialState = false
 		ctx.fileMode = false
 		password, result := passwordEntryDialog(ctx.win, "decryption")
-		if result {
+		if password != "" && result {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
 			text2, err := parseSOAP(&text, soapMessageBegin, soapMessageEnd)
 			if err != nil {
@@ -164,7 +163,6 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 					ctx.notePad.SetText(*message)
 					ctx.updateStatus("decryption successful")
 				}
-
 			}
 		} else {
 			ctx.updateStatus("decryption cancelled")
@@ -180,16 +178,14 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 			text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
 			textBytes := []byte(text)
 			signature, err := signWithKey([]byte(password), &textBytes)
-
 			if err != nil {
 				ctx.updateStatus(err.Error())
 			} else {
 				sigHexString := hex.EncodeToString(*signature)
-				text2 := getSOAP(&sigHexString, ctx, signatureBegin, signatureEnd)
-				ctx.notePad.SetText(*text2)
+				soapFmttedSig := getSOAP(&sigHexString, ctx, signatureBegin, signatureEnd) //refactor
+				ctx.notePad.SetText(*soapFmttedSig)
 				ctx.updateStatus("signature generated")
 			}
-
 		} else {
 			ctx.updateStatus("signature cancelled")
 		}
@@ -199,22 +195,27 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 	buttonList[8].Connect("clicked", func() {
 		ctx.initialState = false
 		ctx.fileMode = false
-
 		text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-		textBytes := []byte(text)
 		if ctx.loadedKey != nil {
-			pubKeyObj := ctx.loadedKey
-			keyX, _ := big.NewInt(0).SetString(pubKeyObj.PubKeyX, 10)
-			keyY, _ := big.NewInt(0).SetString(pubKeyObj.PubKeyY, 10)
-
+			pubKeyObj := ctx.loadedKey                                //loaded key should maybe be keyoobj with E521 for public key instead of x/y
+			keyX, _ := big.NewInt(0).SetString(pubKeyObj.PubKeyX, 10) //refactor
+			keyY, _ := big.NewInt(0).SetString(pubKeyObj.PubKeyY, 10) //refactor
 			key := NewE521XY(*keyX, *keyY)
 			signatureBytes, err := parseSOAP(&text, signatureBegin, signatureEnd)
-			signature, err2 := decodeSignature(signatureBytes)
-
-			if err != nil || err2 != nil {
-				fmt.Println("error")
+			if err != nil {
+				ctx.updateStatus("error parsing signature")
 			} else {
-				fmt.Println(verify(key, signature, &textBytes))
+				signature, err2 := decodeSignature(signatureBytes)
+				if err != nil || err2 != nil {
+					ctx.updateStatus("unable to parse signature")
+				} else {
+					result := verify(key, signature, &signature.M)
+					if result {
+						ctx.updateStatus("good signature from " + ctx.loadedKey.Id)
+					} else {
+						ctx.updateStatus("unable to verify signature")
+					}
+				}
 			}
 		} else {
 			ctx.updateStatus("no key selected")

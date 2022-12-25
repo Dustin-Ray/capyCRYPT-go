@@ -14,54 +14,52 @@ func runtests() {
 }
 
 func testSig() {
+	{
 
-	message := []byte("test")
-	pw := []byte("password")
+		message := generateRandomBytes(64)
+		pw := generateRandomBytes(512)
 
-	s := new(big.Int).SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
-	s = s.Mul(s, big.NewInt(4))
-	s = s.Mod(s, &E521IdPoint().n)
-
-	V := *E521GenPoint(0)
-	V = *V.SecMul(s)
-
-	//get signing key for messsage under password
-	k := new(big.Int).SetBytes(KMACXOF256(&pw, &message, 512, "N"))
-	k = new(big.Int).Mul(k, big.NewInt(4))
-	k = new(big.Int).Mod(k, &E521IdPoint().n)
-
-	//create public signing key for message
-	U := E521GenPoint(0).SecMul(k)
-	fmt.Println(U.x)
-	uXBytes := U.x.Bytes()
-
-	//get the tag for the message key
-	h := KMACXOF256(&uXBytes, &message, 512, "T")
-
-	//create public nonce for signature
-	h_bigInt := new(big.Int).SetBytes(h)
-	z := new(big.Int).Sub(h_bigInt, k.Mul(k, s))
-	z = new(big.Int).Mod(z, &E521IdPoint().r)
-
-	// z = (k - hs) mod r
-	result0 := Signature{H: new(big.Int).Abs(h_bigInt), Z: z}
-	// result, err := encodeSignature(&result0)
-
-	U2 := E521GenPoint(0).SecMul(result0.Z).Add(V.SecMul(result0.H))
-	keyBytes := U2.x.Bytes()
-	h_p := KMACXOF256(&keyBytes, &message, 512, "T")
-	h2 := new(big.Int).SetBytes(h_p)
-	h2 = new(big.Int).Abs(h2)
-	if h2 == new(big.Int).SetBytes(h_p) {
-		fmt.Println("success")
+		s := new(big.Int).SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
+		s = s.Mul(s, big.NewInt(4))
+		V := *E521GenPoint(0)
+		V = *V.SecMul(s)
+		sBytes := s.Bytes()
+		//get signing key for messsage under password
+		k := new(big.Int).SetBytes(KMACXOF256(&sBytes, &message, 512, "N"))
+		k = new(big.Int).Mul(k, big.NewInt(4))
+		//create public signing key for message
+		U := E521GenPoint(0).SecMul(k)
+		uXBytes := U.x.Bytes()
+		//get the tag for the message key
+		h := KMACXOF256(&uXBytes, &message, 512, "T")
+		//create public nonce for signature
+		h_bigInt := new(big.Int).SetBytes(h)
+		z := new(big.Int).Sub(k, new(big.Int).Mul(h_bigInt, s))
+		z = new(big.Int).Mod(z, &E521IdPoint().r)
+		// z = (k - hs) mod r
+		sig := Signature{H: h_bigInt, Z: z}
+		result, err := encodeSignature(&sig)
+		if err != nil {
+			fmt.Println("error")
+		} else {
+			decoded, err3 := decodeSignature(result)
+			if err3 != nil {
+				fmt.Println("err")
+			} else {
+				U2 := E521GenPoint(0).SecMul(decoded.Z).Add(V.SecMul(decoded.H))
+				UXbytes := U2.x.Bytes()
+				h_p := KMACXOF256(&UXbytes, &message, 512, "T")
+				h2 := new(big.Int).SetBytes(h_p)
+				fmt.Println("H: ", h2)
+				fmt.Println("sig.H: ", sig.H)
+				if h2.Cmp(decoded.H) != 0 {
+					fmt.Println("failed")
+				} else {
+					fmt.Println("Success")
+				}
+			}
+		}
 	}
-
-	// if err != nil {
-	// 	fmt.Println("failed to encode signature")
-	// } else {
-	// 	// fmt.Println(result)
-	// }
-
 }
 
 func testEncDec() {

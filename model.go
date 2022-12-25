@@ -27,9 +27,9 @@ type Cryptogram struct {
 }
 
 type Signature struct {
-	msgHash []byte
-	H       *big.Int
-	Z       *big.Int
+	M []byte   // 	message that was signed
+	H *big.Int //	keyed hash of signed message
+	Z *big.Int //	public nonce
 }
 
 /*
@@ -274,33 +274,26 @@ return: signature: (h, z)
 */
 func signWithKey(pw []byte, message *[]byte) (*[]byte, error) {
 
-	//get hash of pw
 	s := new(big.Int).SetBytes(KMACXOF256(&pw, &[]byte{}, 512, "K"))
-	s = new(big.Int).Mul(s, big.NewInt(4))
-	s = new(big.Int).Mod(s, &E521IdPoint().n)
-	s_bytes := s.Bytes()
-
+	s = s.Mul(s, big.NewInt(4))
+	V := *E521GenPoint(0)
+	V = *V.SecMul(s)
+	sBytes := s.Bytes()
 	//get signing key for messsage under password
-	k := new(big.Int).SetBytes(KMACXOF256(&s_bytes, message, 512, "N"))
+	k := new(big.Int).SetBytes(KMACXOF256(&sBytes, message, 512, "N"))
 	k = new(big.Int).Mul(k, big.NewInt(4))
-	k = new(big.Int).Mod(k, &E521IdPoint().n)
-
 	//create public signing key for message
 	U := E521GenPoint(0).SecMul(k)
-	fmt.Println(U.x)
 	uXBytes := U.x.Bytes()
-
 	//get the tag for the message key
 	h := KMACXOF256(&uXBytes, message, 512, "T")
-
 	//create public nonce for signature
 	h_bigInt := new(big.Int).SetBytes(h)
-	z := new(big.Int).Sub(h_bigInt, k.Mul(k, s))
+	z := new(big.Int).Sub(k, new(big.Int).Mul(h_bigInt, s))
 	z = new(big.Int).Mod(z, &E521IdPoint().r)
-
 	// z = (k - hs) mod r
-	result0 := Signature{H: new(big.Int).Abs(h_bigInt), Z: z}
-	result, err := encodeSignature(&result0)
+	sig := Signature{M: *message, H: h_bigInt, Z: z}
+	result, err := encodeSignature(&sig)
 
 	if err != nil {
 		return nil, errors.New("failed to encode signature")
@@ -319,18 +312,18 @@ sig: signature: (h, z)
 pubKey: E521 key V used to sign message m
 return: true if, and only if, KMACXOF256(U x , m, 512, “T”) = h
 */
-func verify(pubkey *E521, sig *Signature, msg *[]byte) bool {
+func verify(pubkey *E521, sig *Signature, message *[]byte) bool {
 
-	U := E521GenPoint(0).SecMul(sig.Z).Add(pubkey.SecMul(sig.H))
-	keyBytes := U.x.Bytes()
-	h_p := KMACXOF256(&keyBytes, msg, 512, "T")
-	h := new(big.Int).SetBytes(h_p)
-	h = new(big.Int).Abs(h)
-	if h == new(big.Int).SetBytes(h_p) {
-		return true
-	} else {
+	U2 := E521GenPoint(0).SecMul(sig.Z).Add(pubkey.SecMul(sig.H))
+	UXbytes := U2.x.Bytes()
+	h_p := KMACXOF256(&UXbytes, message, 512, "T")
+	h2 := new(big.Int).SetBytes(h_p)
+	fmt.Println("H: ", h2)
+	fmt.Println("sig.H: ", sig.H)
+	if h2.Cmp(sig.H) != 0 {
 		return false
+	} else {
+		return true
 	}
-}
 
-//TODO include hash of message in sig object
+}
