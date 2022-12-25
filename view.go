@@ -206,18 +206,14 @@ func setupLabels(ctx *WindowCtx) {
 	ctx.fixed.Put(buttonsLabel, 40, 50)
 	ctx.fixed.Put(notePadLabel, 245, 50)
 	ctx.fixed.Put(keysLabel, 710, 50)
-
 }
 
 // Sets up a progress bar to display status of operations
 func setupProgressBar(ctx *WindowCtx) {
-
 	pb, err := gtk.ProgressBarNew()
 	if err != nil {
 		panic(err)
 	}
 	pb.SetSizeRequest(100, 40)
-
 	ctx.progressBar = pb
-
 }
