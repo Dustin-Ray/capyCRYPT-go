@@ -55,6 +55,22 @@ func SHAKE(N *[]byte, d int) []byte {
 }
 
 /*
+Computes SHA3-512 hash of byte array
+
+	data: message to hash
+	fileMode: determines wheter to process a file or text
+	from the notepad.
+	return: SHA3-512 hash of X
+*/
+func ComputeSHA3HASH(data *[]byte, fileMode bool) []byte {
+	if fileMode {
+		return []byte{}
+	} else {
+		return SHAKE(data, 512)
+	}
+}
+
+/*
 FIPS 202 Section 3 cSHAKE function returns customizable and
 domain seperated length L SHA3XOF hash of input string.
 
@@ -98,23 +114,6 @@ Computes an authentication tag t of a byte array m under passphrase pw
 */
 func ComputeTaggedHash(pw, message []byte, S string) string {
 	return hex.EncodeToString(KMACXOF256(&pw, &message, 512, S))
-}
-
-/*
-Computes SHA3-512 hash of byte array
-
-	data: message to hash
-	fileMode: determines wheter to process a file or text
-	from the notepad.
-	return: SHA3-512 hash of X
-*/
-func ComputeSHA3HASH(data string, fileMode bool) string {
-	dataBytes := []byte(data)
-	if fileMode {
-		return ""
-	} else {
-		return hex.EncodeToString(SHAKE(&dataBytes, 512))
-	}
 }
 
 /*

@@ -57,7 +57,8 @@ func setSHA3Hash(ctx *WindowCtx) {
 	ctx.initialState = false
 	ctx.fileMode = false
 	text, _ := ctx.notePad.GetText(ctx.notePad.GetStartIter(), ctx.notePad.GetEndIter(), true)
-	ctx.notePad.SetText(ComputeSHA3HASH(text, ctx.fileMode))
+	textBytes := []byte(text)
+	ctx.notePad.SetText(hex.EncodeToString(ComputeSHA3HASH(&textBytes, ctx.fileMode)))
 	ctx.updateStatus("SHA3 hash computed successfully")
 }
 
