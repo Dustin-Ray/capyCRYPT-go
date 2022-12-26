@@ -56,7 +56,8 @@ func initialize() *WindowCtx {
 	ctx.win.Add(ctx.fixed)
 
 	ctx.notePad = setupNotepad(&ctx)
-	ctx.buttons = setupButtons(&ctx)
+
+	setupButtons(&ctx)
 	setupLabels(&ctx)
 	setupMenuBar(&ctx)
 	setupKeyTable(&ctx)
@@ -64,6 +65,11 @@ func initialize() *WindowCtx {
 	setupStatus(&ctx)
 	setupCSS()
 	return &ctx
+}
+
+func setupButtons(ctx *WindowCtx) {
+	createButtons(ctx)
+
 }
 
 // Sets up CSS for styling of window

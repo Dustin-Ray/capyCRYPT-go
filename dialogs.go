@@ -50,8 +50,10 @@ func passwordEntryDialog(parent *gtk.Window, message string) (string, bool) {
 	hBox1.Add(entry)
 	hBox2.Add(confirm)
 
+	//init state is empty so pwds match
 	matched := true
 
+	//if pwds dont match then disable ok button
 	confirm.Connect("changed", func() { changed(entry, confirm, &matched, okButton) })
 	entry.Connect("changed", func() { changed(entry, confirm, &matched, okButton) })
 
