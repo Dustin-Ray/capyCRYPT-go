@@ -1,6 +1,7 @@
 package main
 
-//Button manufacturing facility
+/* Controller for MVC. Connects buttons to model functionality and
+transmits messages to view from model. */
 
 import (
 	"encoding/hex"
@@ -104,16 +105,19 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		}
 	})
 
-	//TODO currently is lame, way too much of this is in dialog. need to decouple
+	//Generate a keypair
 	buttonList[4].SetTooltipMarkup("Generates a Schnorr E521 keypair from supplied password.")
 	buttonList[4].Connect("clicked", func() {
 		ctx.initialState = false
 		ctx.fileMode = false
 		key := KeyObj{}
-		constructKey(ctx, &key)
-		ctx.keytable.importKey(ctx, key)
-		ctx.updateStatus("key generation cancelled")
-
+		opResult := constructKey(ctx, &key)
+		if opResult {
+			ctx.keytable.importKey(ctx, key)
+			ctx.updateStatus("key " + key.Id + " generated successfully")
+		} else {
+			ctx.updateStatus("key generation cancelled")
+		}
 	})
 
 	// Encrypt with EC public key
@@ -171,6 +175,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		}
 	})
 
+	//Signs a message using a private key derived from a password.
 	buttonList[7].SetTooltipMarkup("Signs a message with a selected key.")
 	buttonList[7].Connect("clicked", func() {
 		ctx.initialState = false
@@ -193,6 +198,7 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		}
 	})
 
+	//Verifies signature using public key.
 	buttonList[8].SetTooltipMarkup("Verifies a signature against a public key.")
 	buttonList[8].Connect("clicked", func() {
 		ctx.initialState = false
@@ -224,12 +230,4 @@ func setupButtons(ctx *WindowCtx) *[]gtk.Button {
 		}
 	})
 	return &buttonList
-}
-
-// Disables buttons while operation is being performed, reenables buttons when finished.
-// Reset toggles buttons to enabled
-func (ctx *WindowCtx) toggleButtons(buttonList *[]gtk.Button, setting bool) {
-	for _, button := range *buttonList {
-		button.SetSensitive(setting)
-	}
 }

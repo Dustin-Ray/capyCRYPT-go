@@ -88,7 +88,7 @@ func createAndFillModel() *gtk.ListStore {
 	return store
 }
 
-// Sets up the key table
+// Constructs the key table
 func setupKeyTable(ctx *WindowCtx) {
 
 	newGrid, _ := gtk.GridNew()

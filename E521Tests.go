@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"math/big"
 )
@@ -210,4 +211,17 @@ func ktpEqualstkGEqualsktmodrG() {
 		}
 	}
 	fmt.Println("Test passed: ", passedTestCount == numberOfTests)
+}
+
+// gengerates random 512 bit integer
+func generateRandomBigInt() *big.Int {
+	b := make([]byte, 64)
+	_, err := rand.Read(b)
+	if err != nil {
+		fmt.Println("error:", err)
+		return nil
+	}
+	random := big.NewInt(0)
+	random.SetBytes(b)
+	return random
 }

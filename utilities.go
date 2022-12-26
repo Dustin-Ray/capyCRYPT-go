@@ -19,6 +19,8 @@ import (
 	"github.com/lukechampine/fastxor"
 )
 
+/* BITWISE OPERATIONS */
+
 // generates size number of random bytes. Is not assumed
 // to be cryptographically secure.
 func generateRandomBytes(size int) []byte {
@@ -49,12 +51,6 @@ func StateToByteArray(uint64s *[]uint64, bitLength int) []byte {
 		binary.LittleEndian.PutUint64(b, v)
 		result = append(result, b...)
 	}
-	return result
-}
-
-// Converts a string of hex characters to a byte array.
-func HexToBytes(hexString string) []byte {
-	result, _ := hex.DecodeString(hexString)
 	return result
 }
 
@@ -99,6 +95,8 @@ func XorBytes(a, b []byte) []byte {
 	return dst
 }
 
+/* SUPPORTING FUNCTIONS FOR VIEW */
+
 // function to check if pwds match
 func changed(pwd, confirm *gtk.Entry, matched *bool, okBtn *gtk.Button) {
 	// Get the entered password
@@ -128,33 +126,6 @@ func getScrollableTextArea(ctx *WindowCtx, textForBuffer string) gtk.ScrolledWin
 	return *scrollableTextArea
 }
 
-// Exports selected or loaded key to file
-func exportPrivateKey(ctx *WindowCtx) {
-	if ctx.loadedKey != nil {
-		KeyToJSON(ctx.loadedKey)
-		exportKeyDialog(ctx, "Save File")
-	} else {
-		ctx.updateStatus("Export failed - no key selected")
-	}
-}
-
-// Exports selected or loaded public key to file
-func exportPublicKey(ctx *WindowCtx) {
-	if ctx.loadedKey != nil {
-		key := ctx.loadedKey
-		//generate different IDs for public and private keys
-		r := generateRandomBytes(200)
-		r = append(r, []byte(key.Id)...) //Delim Suffix for key ID
-		key.Id = hex.EncodeToString(SpongeSqueeze(SpongeAbsorb(&r, 256), 48, 136))
-		key.PrivKey = ""
-		key.KeyType = "PUBLIC"
-		KeyToJSON(key)
-		exportKeyDialog(ctx, "Save File")
-	} else {
-		ctx.updateStatus("Export failed - no key selected")
-	}
-}
-
 // Resets context to initial state
 func (ctx *WindowCtx) Reset() {
 	ctx.notePad.SetText("")
@@ -168,6 +139,16 @@ func (ctx *WindowCtx) Reset() {
 	ctx.status.SetText("Status: Ready")
 	ctx.win.ShowAll()
 }
+
+// Disables buttons while operation is being performed, reenables buttons when finished.
+// Reset toggles buttons to enabled
+func (ctx *WindowCtx) toggleButtons(buttonList *[]gtk.Button, setting bool) {
+	for _, button := range *buttonList {
+		button.SetSensitive(setting)
+	}
+}
+
+/* SUPPORTING FUNCTIONS FOR MODEL OPERATIONS */
 
 // Encodes arbitrary data into a byte array
 func encodeSymmetricCryptogram(data *SymCryptogram) (*[]byte, error) {
@@ -239,4 +220,31 @@ func decodeSignature(cg_dec *[]byte) (*Signature, error) {
 		return nil, errors.New("failed to decrypt")
 	}
 	return &p2, nil
+}
+
+// Exports selected or loaded key to file
+func exportPrivateKey(ctx *WindowCtx) {
+	if ctx.loadedKey != nil {
+		KeyToJSON(ctx.loadedKey)
+		exportKeyDialog(ctx, "Save File")
+	} else {
+		ctx.updateStatus("Export cancelled - no key selected")
+	}
+}
+
+// Exports selected or loaded public key to file
+func exportPublicKey(ctx *WindowCtx) {
+	if ctx.loadedKey != nil {
+		key := ctx.loadedKey
+		//generate different IDs for public and private keys
+		randomID := generateRandomBytes(200)
+		randomID = append(randomID, []byte(key.Id)...) //Delim Suffix for key ID
+		key.Id = hex.EncodeToString(SpongeSqueeze(SpongeAbsorb(&randomID, 256), 48, 136))
+		key.PrivKey = ""
+		key.KeyType = "PUBLIC"
+		KeyToJSON(key)
+		exportKeyDialog(ctx, "Save File")
+	} else {
+		ctx.updateStatus("Export cancelled - no key selected")
+	}
 }

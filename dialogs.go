@@ -67,6 +67,9 @@ func passwordEntryDialog(parent *gtk.Window, message string) (string, bool) {
 	return "", false
 }
 
+// Prompts user to enter key ownership data.
+// Returns true if operation completed, and false if
+// cancelled.
 func constructKey(ctx *WindowCtx, key *KeyObj) bool {
 
 	// Create a dialog
@@ -78,8 +81,6 @@ func constructKey(ctx *WindowCtx, key *KeyObj) bool {
 
 	//boolean to check if pwds match
 	matched := true
-	//Signals whether operation was completed or cancelled
-	opResult := false
 
 	// Create a boxes to store entry fields and labels
 	vBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 10)
@@ -136,9 +137,10 @@ func constructKey(ctx *WindowCtx, key *KeyObj) bool {
 	}
 	// close the dialog
 	dialog.Destroy()
-	return opResult
+	return false
 }
 
+// adds right click menu to key table for quick detail viewing and exporting
 func rightCLickMenu(ctx *WindowCtx) {
 	// Create a Menu to display when right-clicking a row.
 	menu, _ := gtk.MenuNew()
@@ -178,7 +180,7 @@ func showKeyDetails(ctx *WindowCtx) {
 	dialog.SetDefaultSize(490, 500)
 	dialog.SetTitle("Key details: ")
 
-	// Create a label and set its text.
+	// Create the labels for the dialog
 	key := ctx.loadedKey
 	ID, _ := gtk.LabelNew("ID: " + key.Id)
 	Owner, _ := gtk.LabelNew("OWNER: " + key.Owner)
@@ -194,6 +196,7 @@ func showKeyDetails(ctx *WindowCtx) {
 	fixed.Put(Owner, 25, 60)
 	fixed.Put(KEYTYPE, 25, 95)
 
+	//create text boxes for larger key data
 	pubKeyXWindow := getScrollableTextArea(ctx, ctx.loadedKey.PubKeyX)
 	fixed.Put(PubKeyX, 25, 130)
 	fixed.Put(&pubKeyXWindow, 25, 155)
@@ -212,6 +215,7 @@ func showKeyDetails(ctx *WindowCtx) {
 
 	fixed.Put(DateCreated, 25, 425)
 
+	//ensure user can copy text from labels
 	ID.SetSelectable(true)
 	Owner.SetSelectable(true)
 	KEYTYPE.SetSelectable(true)

@@ -1,5 +1,7 @@
 package main
 
+/* View structure for MVC. Responds to messages from controller.*/
+
 import (
 	"os"
 	"regexp"

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"fmt"
 	"math/big"
 )
 
@@ -83,6 +81,7 @@ func E521GenPoint(msb uint) *E521 {
 
 }
 
+// solves curve equation for y value
 func solveForY(X *big.Int, P big.Int, msb uint) *big.Int {
 	num := new(big.Int).Sub(big.NewInt(1), new(big.Int).Exp(X, big.NewInt(2), nil))
 	num = num.Mod(num, &P)
@@ -196,17 +195,4 @@ func sqrt(v *big.Int, lsb uint) *big.Int {
 		}
 	}
 	return r
-}
-
-// gengerates random 512 bit integer
-func generateRandomBigInt() *big.Int {
-	b := make([]byte, 64)
-	_, err := rand.Read(b)
-	if err != nil {
-		fmt.Println("error:", err)
-		return nil
-	}
-	random := big.NewInt(0)
-	random.SetBytes(b)
-	return random
 }

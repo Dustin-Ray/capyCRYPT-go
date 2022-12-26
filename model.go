@@ -341,5 +341,4 @@ func verify(pubkey *E521, sig *Signature, message *[]byte) bool {
 	} else {
 		return true
 	}
-
 }
