@@ -84,12 +84,19 @@ func E521GenPoint(msb uint) *E521 {
 // solves curve equation for y value
 func solveForY(X *big.Int, P big.Int, msb uint) *big.Int {
 	num := new(big.Int).Sub(big.NewInt(1), new(big.Int).Exp(X, big.NewInt(2), nil))
+	// fmt.Println("num: ", num)
 	num = num.Mod(num, &P)
+	// fmt.Println("num mod p: ", num)
 	denom := new(big.Int).Add(big.NewInt(1), (new(big.Int).Mul(big.NewInt(376014), new(big.Int).Exp(X, big.NewInt(2), nil))))
+	// fmt.Println("denom: ", denom)
 	denom = denom.Mod(denom, &P)
+	// fmt.Println("denom mod p: ", denom)
 	denom = new(big.Int).ModInverse(denom, &P)
+	// fmt.Println("denom mod inv: ", denom)
 	radicand := new(big.Int).Mul(num, denom)
+	// fmt.Println("radicand: ", radicand)
 	Y := sqrt(radicand, msb)
+	// fmt.Println("y: ", Y)
 	return Y
 }
 
@@ -185,10 +192,14 @@ func sqrt(v *big.Int, lsb uint) *big.Int {
 	}
 	P := new(E521).getP()
 	r := new(big.Int).Exp(v, new(big.Int).Add(new(big.Int).Rsh(&P, 2), big.NewInt(1)), &P)
+	// fmt.Println("r value: ", r)
 	if r.Bit(0) != lsb {
 		r.Sub(&P, r) // correct the lsb }
+		// fmt.Println("r sub value: ", r)
 		bi := new(big.Int).Sub(new(big.Int).Mul(r, r), v)
-		if bi.Mod(bi, &P).Sign() == 0 {
+		bi = bi.Mod(bi, &P)
+		// fmt.Println("bi value: ", bi)
+		if bi.Sign() == 0 {
 			return r
 		} else {
 			return nil

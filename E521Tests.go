@@ -6,19 +6,25 @@ import (
 	"math/big"
 )
 
-func run() {
+func rune521Tests() {
 
-	Zero()
-	One()
-	GPlusMinusG()
-	TwoTimesG()
-	FourTimesG()
-	NotZero()
+	// fmt.Println("value for r:", E521IdPoint().r.String())
+	// fmt.Println("value for p:", E521IdPoint().p.String())
+	// fmt.Println("value for n:", E521IdPoint().n.String())
+	// point := E521GenPoint(0)
+	// fmt.Println("E521 gen point: ", point.y.String())
+
+	// Zero()
+	// One()
+	// GPlusMinusG()
+	// TwoTimesG()
+	// FourTimesG()
+	// NotZero()
 	rTimesG()
-	TestkTimesGAndkmodRTimesG()
-	TestkPlus1TimesG()
-	ktTimesgEqualskgtg()
-	ktpEqualstkGEqualsktmodrG()
+	// TestkTimesGAndkmodRTimesG()
+	// TestkPlus1TimesG()
+	// ktTimesgEqualskgtg()
+	// ktpEqualstkGEqualsktmodrG()
 
 }
 
@@ -70,9 +76,12 @@ func GPlusMinusG() {
 func TwoTimesG() {
 
 	passedTestCount := 0
-	numberOfTests := 100
+	numberOfTests := 1
 	for i := 0; i < numberOfTests; i++ {
 		G := E521GenPoint(0)
+		p := G.SecMul(big.NewInt(2))
+		fmt.Println(p.x.String())
+		fmt.Println(p.y.String())
 		if G.SecMul(big.NewInt(2)).Equals(G.Add(G)) {
 			passedTestCount++
 		} else {
