@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 )
@@ -226,6 +227,8 @@ func encryptWithKey(pubKey *E521, message *[]byte) *[]byte {
 	k = k.Mod(k, &pubKey.n)
 
 	W := pubKey.SecMul(k)
+	fmt.Println(W.x.String())
+	fmt.Println(W.y.String())
 
 	Z := E521GenPoint(0).SecMul(k) //watch out for this, be sure to correct msb
 
@@ -265,6 +268,8 @@ func decryptWithKey(pw []byte, message *ECCryptogram) (*string, error) {
 	s = s.Mod(s, &Z.n)
 
 	W := Z.SecMul(s)
+	fmt.Println(W.x.String())
+	fmt.Println(W.y.String())
 
 	temp := W.x.Bytes()
 	ke_ka := KMACXOF256(&temp, &[]byte{}, 1024, "P")

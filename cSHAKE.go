@@ -73,7 +73,7 @@ func leftEncode(value uint64) []byte {
 	for i < 8 && b[i] == 0 {
 		i++
 	}
-	// Prepend number of encoded bytes
+	// Append number of encoded bytes
 	b[i-1] = 9 - i
 	return b[i-1:]
 }

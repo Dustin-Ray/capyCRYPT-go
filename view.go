@@ -6,7 +6,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -32,17 +31,15 @@ type WindowCtx struct {
 
 // Entry point
 func main() {
-	//run spongeTests()
-	// rune521Tests()
-	// gtk.Init(nil)
-	// window := initialize()
-	// settings, _ := gtk.SettingsGetDefault()
-	// err := settings.SetProperty("gtk-application-prefer-dark-theme", true) //try to default to dark theme
-	// if err != nil {
-	// 	window.notePad.SetText("Failed to load dark theme")
-	// }
-	// window.win.ShowAll()
-	// gtk.Main()
+	gtk.Init(nil)
+	window := initialize()
+	settings, _ := gtk.SettingsGetDefault()
+	err := settings.SetProperty("gtk-application-prefer-dark-theme", true) //try to default to dark theme
+	if err != nil {
+		window.notePad.SetText("Failed to load dark theme")
+	}
+	window.win.ShowAll()
+	gtk.Main()
 }
 
 // Sets the window to the initial state and initializes all widgets

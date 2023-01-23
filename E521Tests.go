@@ -14,13 +14,17 @@ func rune521Tests() {
 	// point := E521GenPoint(0)
 	// fmt.Println("E521 gen point: ", point.y.String())
 
+	// neg_g := E521GenPoint(0).getOpposite()
+
+	// res := point.Add(neg_g)
+
 	// Zero()
 	// One()
 	// GPlusMinusG()
 	// TwoTimesG()
 	// FourTimesG()
 	// NotZero()
-	rTimesG()
+	// rTimesG()
 	// TestkTimesGAndkmodRTimesG()
 	// TestkPlus1TimesG()
 	// ktTimesgEqualskgtg()

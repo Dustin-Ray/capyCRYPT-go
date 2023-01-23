@@ -11,7 +11,7 @@ import (
 
 type KeyTable struct {
 	treeview           *gtk.TreeView       // Displays list of keys currently imported into context
-	store              *gtk.ListStore      //Contains a list of keys
+	store              *gtk.ListStore      // Contains a list of keys
 	scrollableTreelist *gtk.ScrolledWindow // Allows scrolling for long list of keys
 	grid               *gtk.Grid           // Grid container for TreeView
 	keyList            map[string]KeyObj   // A list of all keys currently stored in this session
