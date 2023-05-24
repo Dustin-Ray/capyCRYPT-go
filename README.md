@@ -1,7 +1,7 @@
 # capyCRYPT
 ## A complete desktop cryptosystem
 
-The Complete Amazing PrivacY CRYPTography tool is a cryptosystem constructed from the SHA3 primitive paired with the Edwards 521 elliptic curve. The tool standardizes a message format to allow for easy exchange of data. A wide variety of operations are supported, including message digest computation, authenticated encryption, and signature verification, both symmetrically and asymmetrically. 
+The **C**omplete **A**mazing **P**rivac**Y** and **CRYPT**ography tool is a cryptosystem constructed from the SHA3 primitive paired with the Edwards 521 elliptic curve. The tool standardizes a message format to allow for easy exchange of data. A wide variety of operations are supported, including message digest computation, authenticated encryption, and signature verification, both symmetrically and asymmetrically. 
 
 Computing a cryptographic hash:
 
